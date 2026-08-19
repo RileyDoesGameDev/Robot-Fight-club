@@ -6,16 +6,48 @@ This is the contract referenced by `TASKS.md`. Where this document and the propo
 
 ---
 
+## 0. Scope decisions
+
+Recorded so they are not re-litigated, and so the presentation can explain them.
+
+### 2026-08-19 — the player-facing build system is cut; Create becomes **bot selection**
+
+**What changes.** The player no longer assembles a bot from parts. The Create stage becomes a **Bot
+Select** screen: choose one of several prebuilt bots, see its stats, take it into a match.
+
+**Why.** The build system was one of the three systems the proposal's own §4 risk review flagged as
+capstone-scale on its own. With destruction, the weapon controllers, the AI opponent, local multiplayer,
+audio and a UI pass all still ahead of feature-complete in week 6, the build system is the one that can be
+removed without breaking the core loop — a match still needs two bots, and prebuilt bots supply them.
+
+**What is NOT lost.** The socket data model stays exactly as it is, because the assembler needs it to turn
+a blueprint into a bot (§3). Prebuilt bots are still authored as `BotBlueprint` JSON over `PartDef`
+sockets. The difference is only who edits them: the designer, not the player.
+
+**The Workshop already works and is kept as a stretch feature.** Part fitting, swapping, live stats,
+undo/redo and save/load are implemented and verified (§3). It is no longer on the critical path and no
+longer owes the polish the tasks below it once implied — but it is a working demo, not deleted code, and
+it can be re-promoted if the schedule allows.
+
+**Honest consequence for the pitch.** The proposal named "a genuinely dynamic build system" as its first
+differentiator. Selecting a prebuilt bot is not that, and the presentation should not claim it is. The
+differentiators that remain are the two the proposal also named: **real-time physics-based destruction**
+(parts dent, jam and shear off) and an **opponent AI tuned from recorded player matches**. Both are
+untouched by this cut, and both are still ahead of us. If the Workshop stretch lands, the honest framing
+is "a build system exists, and here it is" rather than "building is the core loop".
+
+---
+
 ## 1. Core loop
 
 **Create → Test → Destroy**, mirroring the show.
 
 | Stage | Scene | What the player does |
 |---|---|---|
-| Create | `Workshop` | Fit parts to chassis sockets, paint, name, save a blueprint |
+| Create | `BotSelect` | Choose a prebuilt bot from the roster; see its stats |
 | Test | `DemoCenter` | Spar against a pre-built AI opponent, learn controls, tune |
 | Destroy | `Arena01` | Fight an AI opponent or a local human; parts break off |
-| — | `PostMatch` | Damage summary → "revise your bot" back into the Workshop |
+| — | `PostMatch` | Damage summary → "pick another bot" back to Bot Select |
 
 Win condition: **knockout** (all drive parts destroyed = immobilised, or chassis HP reaches zero) or, on time expiry, **most damage dealt**.
 
@@ -37,13 +69,18 @@ Win condition: **knockout** (all drive parts destroyed = immobilised, or chassis
 | Middleweight | ≤ 110 kg | `player-slice` (98 kg), `opp-wedge` (89 kg) |
 | Heavyweight | ≤ 180 kg | `opp-brick` (168 kg) |
 
-The Workshop refuses to save an over-cap bot (T-4.8). Mass is always the **sum of every attached `PartDef.mass`** — never hand-authored.
+Every prebuilt bot must sit inside a class cap; `game/data/validate.js` fails the build if one does not, so the cap is enforced at authoring time rather than in a player-facing UI. Mass is always the **sum of every attached `PartDef.mass`** — never hand-authored. (The Workshop also refuses to save an over-cap bot, which is where T-4.8 landed.)
 
 ---
 
-## 3. Build system: sockets, not freeform (T-2.3, T-2.4)
+## 3. Bots: prebuilt, over a socket data model (T-2.3, T-2.4)
 
-Adopted scope cut from the proposal: **fixed attachment points**, explicitly not freeform placement.
+Bots are **authored, not player-built** (§0). The socket model below is therefore an *internal* format —
+it is how the assembler knows where a wheel goes and how hard its mount is to shear off — rather than a
+player-facing feature. Every prebuilt bot is a `BotBlueprint` over these sockets, so nothing here becomes
+dead weight.
+
+Fixed attachment points, explicitly not freeform placement.
 
 - A chassis `PartDef` declares its sockets: `id`, local `position`, optional `rotation`, `accepts[]` (categories), and `breakForce` (N).
 - **The JSON is the single source of truth.** The assembler creates a child entity per socket at runtime; there is no `Socket` component and no naming-convention parsing. One mechanism, so the two can never disagree.
@@ -71,7 +108,7 @@ assembly **idempotent** — loading a scene that already contains a baked bot wi
 
 `Arena01` therefore ships as a **spawner-driven scene**: 18 authored entities, no baked bots. Loading it
 produces 36 entities as the two bots build themselves. The arena is not welded to two specific blueprints,
-which is what lets the Workshop hand any saved blueprint to any scene.
+which is what lets Bot Select hand any chosen blueprint to any scene.
 
 Structure produced per bot:
 
@@ -105,7 +142,12 @@ bundle is a generated artifact — never hand-edit it.
 authored socket position. Assembled mass matches the blueprint's declared mass exactly — 98 kg for
 `player-slice`, 89 kg for `opp-wedge`.
 
-### The Workshop (T-2.12 – T-2.18)
+### The Workshop — built, now a stretch feature (T-2.12 – T-2.18)
+
+> **Status:** complete and working, but **off the critical path** since the 2026-08-19 scope cut (§0).
+> It is how the prebuilt roster gets authored, and it is a demo-able bonus. It is not what the player is
+> promised. The unfinished parts of it — ghost preview, clicking sockets in the 3D view — are deferred, not
+> pending.
 
 `Workshop` is a 10-entity authored scene — floor, turntable, backdrop, two part racks, key + ambient
 light, player-facing camera, and one marker carrying `WorkshopController`. Loading it produces ~64 live
@@ -298,4 +340,11 @@ Every chassis exposes the same ten sockets: 4 × wheel, 1 × weapon (top), 4 × 
 
 ## 10. Out of scope
 
-Online multiplayer · ML-trained opponent AI · general free-fracture destruction · freeform (non-socket) building. All four were cut deliberately in §4 of the proposal. Local multiplayer and workshop customisation are **kept**.
+Cut in §4 of the proposal: online multiplayer · ML-trained opponent AI · general free-fracture
+destruction · freeform (non-socket) building.
+
+Cut on 2026-08-19 (§0): **the player-facing build system**, and with it player paint/decals, bot naming,
+and the saved-bot roster with thumbnails. The Workshop that implements part fitting still exists and is
+retained as a stretch feature.
+
+Still **kept**: local multiplayer, and the socket data model that prebuilt bots are authored over.

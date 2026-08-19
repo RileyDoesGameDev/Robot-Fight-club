@@ -4,7 +4,7 @@ Working title: **Battle Bots** · Engine: **DSD SMPL-Engine** (MCP-first, TypeSc
 
 Derived from `Battle_Bots_Project_Proposal (1).docx`. Every task is written to be individually checkable. IDs are stable — reference them in commits (`T-2.4: snap sockets`) and in Trello/Notion cards.
 
-**Legend:** `[ ]` todo · `[~]` in progress / partially validated · `[x]` done · `[-]` superseded (no work required — the sub-bullet says what replaced it) · **(R)** = risk task, needs a spike before committing · **(V)** = validation/verification gate
+**Legend:** `[ ]` todo · `[~]` in progress / partially validated · `[x]` done · `[-]` superseded (no work required — the sub-bullet says what replaced it) · `[>]` deferred (descoped, may return as a stretch) · **(R)** = risk task, needs a spike before committing · **(V)** = validation/verification gate
 
 > Sub-bullets starting **Result:** / **Decision:** / **Measured:** record the evidence a `(V)` task requires.
 
@@ -91,6 +91,15 @@ Derived from `Battle_Bots_Project_Proposal (1).docx`. Every task is written to b
 
 ## 2. Week 2 — Build System Prototype
 
+> **RESCOPED 2026-08-19.** The player-facing build system is cut; Create becomes **choosing a prebuilt
+> bot** (`docs/DESIGN.md` §0). What that means for this section:
+> - **§2.1 / §2.2 (data model + assembler) stay fully in scope** — prebuilt bots are authored over exactly
+>   this socket model, and the assembler is what turns one into a live bot.
+> - **§2.3 (the Workshop) is built and working, but is now a stretch feature.** Its `[x]` marks are
+>   accurate — that code exists and is verified. It is simply no longer on the critical path, and it is
+>   how the prebuilt roster gets authored.
+> - **§2.4 (Bot Select) is the new critical path** for this stage.
+
 ### 2.1 Part data model
 - [x] **T-2.1** Define the `PartDef` schema (JSON in `data/parts/`): `id`, `category` (chassis/wheel/weapon/armor/motor), `displayName`, `mass`, `hp`, `cost`, `mesh`, `colliderSpec`, `sockets[]`, `requiresSocketType`, `stats{}`.
   - `game/data/schemas/part-def.schema.json` + 14 parts in `game/data/parts/`.
@@ -122,8 +131,8 @@ Derived from `Battle_Bots_Project_Proposal (1).docx`. Every task is written to b
   - **Result:** floor, raised turntable, backdrop, two part racks, key + ambient light, and a player-facing camera at `[0, 1.4, 4.2]`. Turntable is a box, not a cylinder — see `docs/engine-bugs.md` LIM-005.
 - [x] **T-2.13** Build the workshop UI (`ui_createCanvas` / `ui_createTree`): part category tabs, part list, socket selector, stat readout, Save / Load / Test buttons.
   - **Result:** 43 UI elements / 24 buttons across five panels — category tabs, part list, socket list, live stat readout, and Save / Load / Test / Remove / Undo / Redo. Built with `ui.createCanvas` + one `ui.createTree` per panel (a wrapper root would collapse its children's fractional anchors).
-- [~] **T-2.14** Implement click-to-select a socket, then click-to-fit a part; show a ghost/preview before commit.
-  - Click-to-select-socket then click-to-fit works, and every fit rebuilds the preview immediately. **The ghost/preview-before-commit is deliberately not built:** immediate apply plus undo/redo is simpler and gives better feedback than a ghost you must confirm. Revisit only if playtesters ask for it. Also still missing: clicking a socket *in the 3D view* (needs picking); selection is list-driven for now.
+- [>] **T-2.14** Implement click-to-select a socket, then click-to-fit a part; show a ghost/preview before commit.
+  - **Deferred with the build system (2026-08-19).** The part that shipped — click-to-select-socket then click-to-fit, with every fit rebuilding the preview immediately — works. **The ghost/preview-before-commit is deliberately not built:** immediate apply plus undo/redo is simpler and gives better feedback than a ghost you must confirm. Revisit only if playtesters ask for it. Also still missing: clicking a socket *in the 3D view* (needs picking); selection is list-driven for now.
 - [x] **T-2.15** Implement part removal and swap.
   - **Result:** fitting into an occupied socket swaps in place (verified 110 kg Medium Plate -> 118 kg Heavy Plate with the part count unchanged at 8); Remove clears the selected socket (verified wheels 4 -> 3 -> 4).
 - [x] **T-2.16** Wire undo/redo in the workshop through `undo_beginTransaction` / `undo_commit` / `undo_undo` so each fit is one atomic step.
@@ -132,7 +141,15 @@ Derived from `Battle_Bots_Project_Proposal (1).docx`. Every task is written to b
   - **Result:** live panel showing name, chassis, mass + weight class, armour total, weapon rating, estimated top speed, and wheel count. Over-cap mass and a bot with <2 wheels both turn red.
 - [x] **T-2.18** Blueprint persistence: save/load named bots (`game_saveSlot` / `game_loadSlot` or a JSON file via `project_writeFile`). Pick one and document it.
   - **Decision: plain JSON via `project.writeFile`**, not `game.saveSlot` — a blueprint is authored content that must stay diffable and exportable to the repo. Bots go to `/data/bots/<slug>.json` with the roster in `/data/roster.json`. Load cycles roster + bundled blueprints (verified opp-brick -> opp-wedge -> player-slice -> new-bot -> wrap). Saving an over-cap bot is refused (verified at 204 kg), which also covers T-4.8.
-- [ ] **T-2.19** **Vertical-slice gate:** build a bot in the Workshop → launch it into `Arena01` → drive it. Loop closes end to end. **(V)**
+- [>] **T-2.19** **Vertical-slice gate:** build a bot in the Workshop → launch it into `Arena01` → drive it. Loop closes end to end. **(V)**
+  - **Superseded by T-2.23** — the gate is now *select* a bot, not build one. The Workshop half of this already works; only the scene hand-off was ever missing.
+
+### 2.4 Bot Select — the new Create stage (added 2026-08-19)
+
+- [ ] **T-2.20** Author the prebuilt roster: 4–6 bots spanning the weight classes, each a `BotBlueprint` in `game/data/bots/`, each distinct enough to change how a match plays. Three exist (`player-slice`, `opp-wedge`, `opp-brick`) — they need companions with different weapons, not just different masses.
+- [ ] **T-2.21** Build the `BotSelect` scene: turntable preview of the highlighted bot, roster list, per-bot stat card (mass, class, armour total, weapon, top-speed estimate), Prev / Next / Confirm. Reuse `WorkshopController`'s stat + preview machinery — the preview path (write blueprint → spawner marker → `BotAssembler`) already works.
+- [ ] **T-2.22** Bot-select → arena hand-off: the confirmed blueprint id becomes the player spawn in `Arena01` / `DemoCenter`. Depends on the same scene-flow plumbing as T-6.2.
+- [ ] **T-2.23** **Vertical-slice gate (replaces T-2.19):** choose a bot in `BotSelect` → launch into `Arena01` → drive it. Loop closes end to end. **(V)**
 
 ---
 
@@ -166,6 +183,10 @@ Derived from `Battle_Bots_Project_Proposal (1).docx`. Every task is written to b
 
 ## 4. Week 4 — Build System Expansion
 
+> **RESCOPED 2026-08-19.** With no player-facing builder, this section narrows to *content and balance for
+> prebuilt bots*. Weapon variety (§4.1) matters **more**, not less — it is now the main axis of difference
+> between bots. Player customisation (§4.3) is deferred.
+
 ### 4.1 Weapon variety
 - [ ] **T-4.1** Vertical spinner / drum: prefab, joint config, damage profile, spin-up curve.
 - [ ] **T-4.2** Hammer / axe: revolute joint + position motor, swing arc, cooldown, damage profile.
@@ -175,17 +196,23 @@ Derived from `Battle_Bots_Project_Proposal (1).docx`. Every task is written to b
 - [ ] **T-4.6** Per-weapon audio + VFX hooks (stubbed now, filled in weeks 5–6).
 
 ### 4.2 Armor & weight classes
-- [ ] **T-4.7** Add armor tiers (light / medium / heavy) with mass↔protection tradeoffs.
-- [ ] **T-4.8** Define weight classes with mass caps; the Workshop blocks saving an over-cap bot.
+- [x] **T-4.7** Add armor tiers (light / medium / heavy) with mass↔protection tradeoffs.
+  - Shipped in the data model: `ar-light` 6 kg / 90 hp / 0.15 reduction, `ar-med` 12 kg / 140 hp / 0.30, `ar-heavy` 20 kg / 200 hp / 0.45 (`game/data/parts/`, reductions in `damage.json`).
+- [x] **T-4.8** Define weight classes with mass caps; the Workshop blocks saving an over-cap bot.
+  - Caps 60 / 110 / 180 kg in `game/data/weight-classes.json`; `validate.js` fails an over-cap blueprint at authoring time, and the Workshop refuses the save (verified at 204 kg).
 - [ ] **T-4.9** First balance pass: verify no single weapon dominates every matchup. Log matchup results in a table. **(V)**
 - [ ] **T-4.10** Add motor/drivetrain parts as a real tradeoff (speed vs. torque vs. mass).
 
 ### 4.3 Customization visuals
-- [ ] **T-4.11** Build the paint system: base + secondary color per part via `material_setParams` or `MeshRenderer.color`.
-- [ ] **T-4.12** Add decals/patterns using the texture tools (`texture_create`, `texture_paintStroke`, `texture_applyToEntity`) or a UV-atlas swap. Pick the cheaper path.
+- [>] **T-4.11** Build the paint system: base + secondary color per part via `material_setParams` or `MeshRenderer.color`.
+  - **Deferred (2026-08-19)** — player customisation is out of scope. Authored per-bot `paint.primary` / `paint.secondary` already drives greybox colour in `BotAssembler`, which is enough to tell two bots apart on screen.
+- [>] **T-4.12** Add decals/patterns using the texture tools (`texture_create`, `texture_paintStroke`, `texture_applyToEntity`) or a UV-atlas swap. Pick the cheaper path.
+  - **Deferred (2026-08-19)** with player customisation.
 - [ ] **T-4.13** Add a wear/scratch overlay that intensifies with damage state.
 - [ ] **T-4.14** Add bot naming + a saved bot roster with thumbnails (`assets_thumbnail` or `renderer_captureScreenshot`).
-- [ ] **T-4.15** Extend `BotBlueprint` to persist paint/decal choices; verify round-trip. **(V)**
+  - **Re-aimed (2026-08-19):** player naming is deferred, but thumbnails are now wanted for the **T-2.21 Bot Select** roster instead of for player-saved bots.
+- [>] **T-4.15** Extend `BotBlueprint` to persist paint/decal choices; verify round-trip. **(V)**
+  - **Deferred (2026-08-19).** Authored `paint` is already in the `BotBlueprint` schema and survives save/load; only player-chosen paint is out.
 
 ### 4.4 Art pipeline (runs in parallel from week 2)
 - [ ] **T-4.16** Model the chassis variants in Blender; export glTF; import via `assets_import`.
@@ -296,6 +323,7 @@ Derived from `Battle_Bots_Project_Proposal (1).docx`. Every task is written to b
 
 ## 9. Stretch Goals (only if on/ahead of schedule by week 5)
 
+- [ ] **T-9.0** **Re-promote the Workshop** to a shipped feature: the player-facing build system (T-2.12 – T-2.18) is already implemented and verified, so this is a polish-and-wire-up job (ghost preview T-2.14, 3D socket picking, paint T-4.11) rather than new construction. Take this only once the damage system, AI and match flow are done.
 - [ ] **T-9.1** Extra utility considerations: react to the opponent's specific weapon type.
 - [ ] **T-9.2** Aggression that adapts to remaining health.
 - [ ] **T-9.3** Opponent-behavior modeling — the AI picks up on a specific player's habits across matches.
@@ -317,7 +345,7 @@ Derived from `Battle_Bots_Project_Proposal (1).docx`. Every task is written to b
 | R4 | Two-device local input unproven | Cuts a core pitch feature | Spike the input layer in week 2, not week 6 | T-6.6 |
 | R5 | No telemetry recorded before week 5 | AI tuning has no data; the "real player data" claim fails | Land recording by week 3 | T-5.14 |
 | R6 | Art volume for 4 weapons + parts + 2 scenes, solo | Week 4 slips | Ship greybox-playable; art is a parallel track, never a blocker | T-4.16–T-4.22 |
-| R7 | Build system scope creeps toward freeform | Eats weeks 4–6 | Sockets only; the design doc is the contract | T-2.3, T-2.4 |
+| ~~R7~~ | ~~Build system scope creeps toward freeform~~ | — | **Retired 2026-08-19:** the player-facing build system is cut entirely (`DESIGN.md` §0), so there is no longer a builder whose scope can creep. The socket model it would have crept from is now internal-only. | T-2.3, T-2.4 |
 | R8 | Docker rebuild loop slows iteration (no in-container HMR) | Death by a thousand rebuilds | Do gameplay work through scripting + `script_hotReload`; rebuild images only for engine-package changes | T-0.1, T-0.2 |
 
 ---

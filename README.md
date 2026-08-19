@@ -1,17 +1,20 @@
 # Battle Bots
 
-A physics-based robot combat game built on the **DSD SMPL-Engine**. Design and build a combat robot from
-modular parts, spar against AI opponents, then fight in a destructible arena where wheels get sheared off
-and weapons jam.
+A physics-based robot combat game built on the **DSD SMPL-Engine**. Pick a combat robot, spar against AI
+opponents, then fight in a destructible arena where wheels get sheared off and weapons jam.
 
 Solo project · 8-week window · feature-complete target: end of week 6.
 
-**Status: week 1 complete, week 2 nearly done.** The arena is blocked out, the **assembler works** (a
-`BotBlueprint` becomes a live bot with one breakable rigid body per part, verified deterministic), and the
-**Workshop is playable** — fit and swap parts across ten sockets, live mass/weight-class readout,
-undo/redo, save/load, and a preview bot that rebuilds on every edit. Next: the damage system, the spinner
-weapon controller, and the AI opponent — see [docs/VERTICAL-SLICE.md](docs/VERTICAL-SLICE.md) for the
-week 2–3 gate.
+> **Scope change, 2026-08-19:** the player-facing build system is cut. The Create stage is now **choosing
+> a prebuilt bot**, not building one. Rationale, and what it costs the pitch, in
+> [docs/DESIGN.md](docs/DESIGN.md) §0.
+
+**Status: week 1 complete, week 2 mostly done.** The arena is blocked out and the **assembler works** — a
+`BotBlueprint` becomes a live bot with one breakable rigid body per part, verified deterministic. Two bots
+build themselves on scene load and drive. A full part-fitting **Workshop is implemented and working**, and
+is now kept as a stretch feature (it is also how the prebuilt roster gets authored). Next: the Bot Select
+screen, then the damage system — see [docs/VERTICAL-SLICE.md](docs/VERTICAL-SLICE.md) for the week 2–3
+gate.
 
 ![Two assembled bots facing off in Arena01](docs/images/assembled-bots.png)
 
@@ -49,10 +52,11 @@ Nothing in the browser is backed up.
 ```
 game/
   scenes/     Arena01 + Workshop (both spawner-driven) + MainMenu, DemoCenter, PostMatch (placeholders)
+              BotSelect is the next scene to build (T-2.21)
   scripts/    gameplay behaviours — BotDrive.ts, BotAssembler.ts, WorkshopController.ts
   data/
     parts/            14 PartDefs (chassis, wheels, weapons, armor, motors)
-    bots/             seed BotBlueprints — player-slice, opp-wedge, opp-brick
+    bots/             prebuilt BotBlueprints — player-slice, opp-wedge, opp-brick (roster grows in T-2.20)
     schemas/          JSON Schema for PartDef and BotBlueprint
     damage.json       damage-model constants (T-3.3)
     weight-classes.json, input-map.json
