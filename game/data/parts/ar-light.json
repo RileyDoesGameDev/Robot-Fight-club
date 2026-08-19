@@ -1,0 +1,28 @@
+{
+  "id": "ar-light",
+  "category": "armor",
+  "displayName": "Light Plate",
+  "mass": 6,
+  "hp": 90,
+  "cost": 70,
+  "mesh": null,
+  "primitive": "box",
+  "visualScale": [
+    0.5,
+    0.14,
+    0.04
+  ],
+  "requiresSocketType": "armor",
+  "armorTier": "light",
+  "colliderSpec": {
+    "shape": "box",
+    "halfExtents": [
+      0.25,
+      0.07,
+      0.02
+    ],
+    "friction": 0.4,
+    "restitution": 0
+  },
+  "stats": {}
+}

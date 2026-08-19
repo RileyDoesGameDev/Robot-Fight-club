@@ -1,0 +1,26 @@
+{
+  "id": "wh-s",
+  "category": "wheel",
+  "displayName": "Light Wheel",
+  "mass": 3,
+  "hp": 40,
+  "cost": 40,
+  "mesh": null,
+  "primitive": "sphere",
+  "visualScale": [
+    0.07,
+    0.2,
+    0.2
+  ],
+  "requiresSocketType": "wheel",
+  "colliderSpec": {
+    "shape": "sphere",
+    "radius": 0.1,
+    "friction": 0.6,
+    "restitution": 0
+  },
+  "stats": {
+    "driveScale": 0.85,
+    "gripScale": 0.9
+  }
+}

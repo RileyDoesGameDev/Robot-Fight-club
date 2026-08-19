@@ -1,0 +1,28 @@
+{
+  "id": "ar-med",
+  "category": "armor",
+  "displayName": "Medium Plate",
+  "mass": 12,
+  "hp": 140,
+  "cost": 120,
+  "mesh": null,
+  "primitive": "box",
+  "visualScale": [
+    0.5,
+    0.16,
+    0.06
+  ],
+  "requiresSocketType": "armor",
+  "armorTier": "medium",
+  "colliderSpec": {
+    "shape": "box",
+    "halfExtents": [
+      0.25,
+      0.08,
+      0.03
+    ],
+    "friction": 0.4,
+    "restitution": 0
+  },
+  "stats": {}
+}

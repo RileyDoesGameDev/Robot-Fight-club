@@ -1,0 +1,31 @@
+{
+  "id": "mt-speed",
+  "category": "motor",
+  "displayName": "Sprint Drive",
+  "mass": 7,
+  "hp": 70,
+  "cost": 130,
+  "mesh": null,
+  "primitive": "box",
+  "visualScale": [
+    0.2,
+    0.12,
+    0.24
+  ],
+  "requiresSocketType": "motor",
+  "colliderSpec": {
+    "shape": "box",
+    "halfExtents": [
+      0.1,
+      0.06,
+      0.12
+    ],
+    "friction": 0.4,
+    "restitution": 0
+  },
+  "stats": {
+    "driveForceMultiplier": 1.25,
+    "turnTorqueMultiplier": 0.85,
+    "maxSpeedMultiplier": 1.3
+  }
+}

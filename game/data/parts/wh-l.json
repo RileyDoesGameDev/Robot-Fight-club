@@ -1,0 +1,26 @@
+{
+  "id": "wh-l",
+  "category": "wheel",
+  "displayName": "Heavy Wheel",
+  "mass": 8,
+  "hp": 85,
+  "cost": 90,
+  "mesh": null,
+  "primitive": "sphere",
+  "visualScale": [
+    0.1,
+    0.3,
+    0.3
+  ],
+  "requiresSocketType": "wheel",
+  "colliderSpec": {
+    "shape": "sphere",
+    "radius": 0.15,
+    "friction": 0.7,
+    "restitution": 0
+  },
+  "stats": {
+    "driveScale": 1.15,
+    "gripScale": 1.1
+  }
+}

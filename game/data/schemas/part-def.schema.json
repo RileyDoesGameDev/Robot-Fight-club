@@ -1,0 +1,186 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "battle-bots/part-def",
+  "title": "PartDef",
+  "description": "One buildable part. Files live in game/data/parts/<id>.json (T-2.1).",
+  "type": "object",
+  "required": [
+    "id",
+    "category",
+    "displayName",
+    "mass",
+    "hp",
+    "cost",
+    "colliderSpec"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "$comment": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "category": {
+      "enum": [
+        "chassis",
+        "wheel",
+        "weapon",
+        "armor",
+        "motor"
+      ]
+    },
+    "displayName": {
+      "type": "string"
+    },
+    "mass": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "kg"
+    },
+    "hp": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "cost": {
+      "type": "number",
+      "minimum": 0
+    },
+    "mesh": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Imported mesh asset id; null = greybox primitive."
+    },
+    "primitive": {
+      "enum": [
+        "box",
+        "sphere",
+        "cylinder",
+        "none"
+      ],
+      "description": "Greybox fallback while art is pending."
+    },
+    "visualScale": {
+      "type": "array",
+      "items": {
+        "type": "number"
+      },
+      "minItems": 3,
+      "maxItems": 3,
+      "description": "Greybox visual size in m. Lives on a unit-scaled child, never the body."
+    },
+    "colliderSpec": {
+      "type": "object",
+      "required": [
+        "shape"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "shape": {
+          "enum": [
+            "box",
+            "sphere",
+            "capsule",
+            "cylinder",
+            "convexHull"
+          ]
+        },
+        "halfExtents": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "radius": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "halfHeight": {
+          "type": "number",
+          "minimum": 0
+        },
+        "friction": {
+          "type": "number",
+          "minimum": 0
+        },
+        "restitution": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "requiresSocketType": {
+      "type": "string",
+      "description": "Socket category this part may be fitted into."
+    },
+    "sockets": {
+      "type": "array",
+      "description": "Attachment points this part OFFERS (chassis only). Source of truth for the assembler (T-2.4).",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "position",
+          "accepts",
+          "breakForce"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "position": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 3,
+            "maxItems": 3,
+            "description": "Local offset in the chassis body frame, m; multiple of socketGridM."
+          },
+          "rotation": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 4,
+            "maxItems": 4
+          },
+          "accepts": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "wheel",
+                "weapon",
+                "armor",
+                "motor"
+              ]
+            }
+          },
+          "breakForce": {
+            "type": "number",
+            "minimum": 0,
+            "description": "N; joint shears above this (T-5.1)."
+          }
+        }
+      }
+    },
+    "armorTier": {
+      "enum": [
+        "light",
+        "medium",
+        "heavy"
+      ]
+    },
+    "stats": {
+      "type": "object",
+      "description": "Category-specific tuning consumed by the relevant controller."
+    }
+  }
+}

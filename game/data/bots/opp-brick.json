@@ -1,0 +1,48 @@
+{
+  "name": "Anvil",
+  "chassisId": "ch-brick-h",
+  "paint": {
+    "primary": "#8a2f2f",
+    "secondary": "#3a3a3f"
+  },
+  "attachments": [
+    {
+      "socketId": "wheel_fl",
+      "partId": "wh-l"
+    },
+    {
+      "socketId": "wheel_fr",
+      "partId": "wh-l"
+    },
+    {
+      "socketId": "wheel_rl",
+      "partId": "wh-l"
+    },
+    {
+      "socketId": "wheel_rr",
+      "partId": "wh-l"
+    },
+    {
+      "socketId": "armor_front",
+      "partId": "ar-heavy"
+    },
+    {
+      "socketId": "armor_left",
+      "partId": "ar-med"
+    },
+    {
+      "socketId": "armor_right",
+      "partId": "ar-med"
+    },
+    {
+      "socketId": "motor_bay",
+      "partId": "mt-torque"
+    }
+  ],
+  "derived": {
+    "totalMassKg": 168,
+    "weightClass": "heavy",
+    "armorTotal": 480,
+    "weaponRating": 0
+  }
+}

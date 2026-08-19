@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+
+# Build / deploy output
+dist/
+build/
+out/
+*.tsbuildinfo
+
+# Blender / DCC scratch
+*.blend1
+*.blend2
+*.spp.autosave
+
+# Engine scratch — the editor's rolling autosave is not an authored artifact.
+# Named scenes under game/scenes/ ARE committed; autosave is not.
+**/autosave.scene.json
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+
+# Local-only environment
+.env
+.env.local

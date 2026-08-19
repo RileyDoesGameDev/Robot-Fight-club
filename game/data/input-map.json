@@ -1,0 +1,33 @@
+{
+  "$comment": "Action -> KeyboardEvent.code bindings. Applied with input.mapAction. P2 + gamepad land in T-6.6.",
+  "player1": {
+    "drive.forward": [
+      "KeyW",
+      "ArrowUp"
+    ],
+    "drive.back": [
+      "KeyS",
+      "ArrowDown"
+    ],
+    "turn.left": [
+      "KeyA",
+      "ArrowLeft"
+    ],
+    "turn.right": [
+      "KeyD",
+      "ArrowRight"
+    ],
+    "weapon.primary": [
+      "Space"
+    ],
+    "weapon.secondary": [
+      "ShiftLeft"
+    ],
+    "bot.selfRight": [
+      "KeyR"
+    ],
+    "ui.pause": [
+      "Escape"
+    ]
+  }
+}

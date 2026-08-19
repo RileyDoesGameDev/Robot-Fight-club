@@ -1,0 +1,21 @@
+{
+  "$comment": "1 unit = 1 m, 1 mass unit = 1 kg. Mass is the sum of every PartDef.mass in a blueprint.",
+  "socketGridM": 0.02,
+  "classes": [
+    {
+      "id": "light",
+      "displayName": "Lightweight",
+      "maxMassKg": 60
+    },
+    {
+      "id": "middle",
+      "displayName": "Middleweight",
+      "maxMassKg": 110
+    },
+    {
+      "id": "heavy",
+      "displayName": "Heavyweight",
+      "maxMassKg": 180
+    }
+  ]
+}

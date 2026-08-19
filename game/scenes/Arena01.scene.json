@@ -1,0 +1,1698 @@
+{
+  "formatVersion": 1,
+  "entities": [
+    {
+      "id": 18,
+      "parent": null,
+      "components": {
+        "Transform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "Name": {
+          "value": "Root"
+        }
+      }
+    },
+    {
+      "id": 19,
+      "parent": 18,
+      "components": {
+        "Transform": {
+          "position": [
+            0,
+            11,
+            12
+          ],
+          "rotation": [
+            -0.3625,
+            0,
+            0,
+            0.932
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "Camera": {
+          "fov": 60,
+          "near": 0.1,
+          "far": 200,
+          "active": true
+        },
+        "Name": {
+          "value": "MatchCamera"
+        }
+      }
+    },
+    {
+      "id": 20,
+      "parent": 18,
+      "components": {
+        "Transform": {
+          "position": [
+            6,
+            14,
+            4
+          ],
+          "rotation": [
+            -0.4082,
+            0.2346,
+            0.1094,
+            0.8754
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "Light": {
+          "type": "directional",
+          "color": 16775920,
+          "intensity": 2.6,
+          "castShadow": true
+        },
+        "Name": {
+          "value": "ArenaKeyLight"
+        }
+      }
+    },
+    {
+      "id": 21,
+      "parent": 18,
+      "components": {
+        "Transform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "Name": {
+          "value": "Arena"
+        }
+      }
+    },
+    {
+      "id": 22,
+      "parent": 21,
+      "components": {
+        "Transform": {
+          "position": [
+            0,
+            -0.2,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            8,
+            0.4,
+            12
+          ]
+        },
+        "MeshRenderer": {
+          "meshId": null,
+          "primitive": "box",
+          "materialId": null,
+          "color": 3815999,
+          "textureId": null,
+          "visible": true,
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        "Name": {
+          "value": "Floor_Center"
+        },
+        "RigidBody": {
+          "type": "fixed",
+          "mass": null,
+          "linearDamping": 0,
+          "angularDamping": 0,
+          "gravityScale": 1,
+          "ccdEnabled": false,
+          "dominanceGroup": 0,
+          "canSleep": true,
+          "massProperties": null
+        },
+        "Collider": {
+          "shape": "box",
+          "halfExtents": [
+            4,
+            0.2,
+            6
+          ],
+          "radius": 0.5,
+          "halfHeight": 0.5,
+          "meshId": null,
+          "meshScale": [
+            1,
+            1,
+            1
+          ],
+          "offsetPosition": [
+            0,
+            0,
+            0
+          ],
+          "offsetRotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "extraShapes": null,
+          "restitution": 0,
+          "friction": 0.9,
+          "density": 1,
+          "isSensor": false,
+          "collisionGroups": {
+            "membership": 65535,
+            "filter": 65535
+          },
+          "contactForceEventThreshold": 0
+        }
+      }
+    },
+    {
+      "id": 23,
+      "parent": 21,
+      "components": {
+        "Transform": {
+          "position": [
+            -5,
+            -0.2,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            2,
+            0.4,
+            8
+          ]
+        },
+        "MeshRenderer": {
+          "meshId": null,
+          "primitive": "box",
+          "materialId": null,
+          "color": 3815999,
+          "textureId": null,
+          "visible": true,
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        "Name": {
+          "value": "Floor_West"
+        },
+        "RigidBody": {
+          "type": "fixed",
+          "mass": null,
+          "linearDamping": 0,
+          "angularDamping": 0,
+          "gravityScale": 1,
+          "ccdEnabled": false,
+          "dominanceGroup": 0,
+          "canSleep": true,
+          "massProperties": null
+        },
+        "Collider": {
+          "shape": "box",
+          "halfExtents": [
+            1,
+            0.2,
+            4
+          ],
+          "radius": 0.5,
+          "halfHeight": 0.5,
+          "meshId": null,
+          "meshScale": [
+            1,
+            1,
+            1
+          ],
+          "offsetPosition": [
+            0,
+            0,
+            0
+          ],
+          "offsetRotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "extraShapes": null,
+          "restitution": 0,
+          "friction": 0.9,
+          "density": 1,
+          "isSensor": false,
+          "collisionGroups": {
+            "membership": 65535,
+            "filter": 65535
+          },
+          "contactForceEventThreshold": 0
+        }
+      }
+    },
+    {
+      "id": 24,
+      "parent": 21,
+      "components": {
+        "Transform": {
+          "position": [
+            5,
+            -0.2,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            2,
+            0.4,
+            8
+          ]
+        },
+        "MeshRenderer": {
+          "meshId": null,
+          "primitive": "box",
+          "materialId": null,
+          "color": 3815999,
+          "textureId": null,
+          "visible": true,
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        "Name": {
+          "value": "Floor_East"
+        },
+        "RigidBody": {
+          "type": "fixed",
+          "mass": null,
+          "linearDamping": 0,
+          "angularDamping": 0,
+          "gravityScale": 1,
+          "ccdEnabled": false,
+          "dominanceGroup": 0,
+          "canSleep": true,
+          "massProperties": null
+        },
+        "Collider": {
+          "shape": "box",
+          "halfExtents": [
+            1,
+            0.2,
+            4
+          ],
+          "radius": 0.5,
+          "halfHeight": 0.5,
+          "meshId": null,
+          "meshScale": [
+            1,
+            1,
+            1
+          ],
+          "offsetPosition": [
+            0,
+            0,
+            0
+          ],
+          "offsetRotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "extraShapes": null,
+          "restitution": 0,
+          "friction": 0.9,
+          "density": 1,
+          "isSensor": false,
+          "collisionGroups": {
+            "membership": 65535,
+            "filter": 65535
+          },
+          "contactForceEventThreshold": 0
+        }
+      }
+    },
+    {
+      "id": 25,
+      "parent": 21,
+      "components": {
+        "Transform": {
+          "position": [
+            0,
+            0.6,
+            -6.15
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            12.6,
+            1.2,
+            0.3
+          ]
+        },
+        "MeshRenderer": {
+          "meshId": null,
+          "primitive": "box",
+          "materialId": null,
+          "color": 5921890,
+          "textureId": null,
+          "visible": true,
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        "Name": {
+          "value": "Wall_North"
+        },
+        "RigidBody": {
+          "type": "fixed",
+          "mass": null,
+          "linearDamping": 0,
+          "angularDamping": 0,
+          "gravityScale": 1,
+          "ccdEnabled": false,
+          "dominanceGroup": 0,
+          "canSleep": true,
+          "massProperties": null
+        },
+        "Collider": {
+          "shape": "box",
+          "halfExtents": [
+            6.3,
+            0.6,
+            0.15
+          ],
+          "radius": 0.5,
+          "halfHeight": 0.5,
+          "meshId": null,
+          "meshScale": [
+            1,
+            1,
+            1
+          ],
+          "offsetPosition": [
+            0,
+            0,
+            0
+          ],
+          "offsetRotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "extraShapes": null,
+          "restitution": 0,
+          "friction": 0.4,
+          "density": 1,
+          "isSensor": false,
+          "collisionGroups": {
+            "membership": 65535,
+            "filter": 65535
+          },
+          "contactForceEventThreshold": 0
+        }
+      }
+    },
+    {
+      "id": 26,
+      "parent": 21,
+      "components": {
+        "Transform": {
+          "position": [
+            0,
+            0.6,
+            6.15
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            12.6,
+            1.2,
+            0.3
+          ]
+        },
+        "MeshRenderer": {
+          "meshId": null,
+          "primitive": "box",
+          "materialId": null,
+          "color": 5921890,
+          "textureId": null,
+          "visible": true,
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        "Name": {
+          "value": "Wall_South"
+        },
+        "RigidBody": {
+          "type": "fixed",
+          "mass": null,
+          "linearDamping": 0,
+          "angularDamping": 0,
+          "gravityScale": 1,
+          "ccdEnabled": false,
+          "dominanceGroup": 0,
+          "canSleep": true,
+          "massProperties": null
+        },
+        "Collider": {
+          "shape": "box",
+          "halfExtents": [
+            6.3,
+            0.6,
+            0.15
+          ],
+          "radius": 0.5,
+          "halfHeight": 0.5,
+          "meshId": null,
+          "meshScale": [
+            1,
+            1,
+            1
+          ],
+          "offsetPosition": [
+            0,
+            0,
+            0
+          ],
+          "offsetRotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "extraShapes": null,
+          "restitution": 0,
+          "friction": 0.4,
+          "density": 1,
+          "isSensor": false,
+          "collisionGroups": {
+            "membership": 65535,
+            "filter": 65535
+          },
+          "contactForceEventThreshold": 0
+        }
+      }
+    },
+    {
+      "id": 27,
+      "parent": 21,
+      "components": {
+        "Transform": {
+          "position": [
+            6.15,
+            0.6,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            0.3,
+            1.2,
+            12.6
+          ]
+        },
+        "MeshRenderer": {
+          "meshId": null,
+          "primitive": "box",
+          "materialId": null,
+          "color": 5921890,
+          "textureId": null,
+          "visible": true,
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        "Name": {
+          "value": "Wall_East"
+        },
+        "RigidBody": {
+          "type": "fixed",
+          "mass": null,
+          "linearDamping": 0,
+          "angularDamping": 0,
+          "gravityScale": 1,
+          "ccdEnabled": false,
+          "dominanceGroup": 0,
+          "canSleep": true,
+          "massProperties": null
+        },
+        "Collider": {
+          "shape": "box",
+          "halfExtents": [
+            0.15,
+            0.6,
+            6.3
+          ],
+          "radius": 0.5,
+          "halfHeight": 0.5,
+          "meshId": null,
+          "meshScale": [
+            1,
+            1,
+            1
+          ],
+          "offsetPosition": [
+            0,
+            0,
+            0
+          ],
+          "offsetRotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "extraShapes": null,
+          "restitution": 0,
+          "friction": 0.4,
+          "density": 1,
+          "isSensor": false,
+          "collisionGroups": {
+            "membership": 65535,
+            "filter": 65535
+          },
+          "contactForceEventThreshold": 0
+        }
+      }
+    },
+    {
+      "id": 28,
+      "parent": 21,
+      "components": {
+        "Transform": {
+          "position": [
+            -6.15,
+            0.6,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            0.3,
+            1.2,
+            12.6
+          ]
+        },
+        "MeshRenderer": {
+          "meshId": null,
+          "primitive": "box",
+          "materialId": null,
+          "color": 5921890,
+          "textureId": null,
+          "visible": true,
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        "Name": {
+          "value": "Wall_West"
+        },
+        "RigidBody": {
+          "type": "fixed",
+          "mass": null,
+          "linearDamping": 0,
+          "angularDamping": 0,
+          "gravityScale": 1,
+          "ccdEnabled": false,
+          "dominanceGroup": 0,
+          "canSleep": true,
+          "massProperties": null
+        },
+        "Collider": {
+          "shape": "box",
+          "halfExtents": [
+            0.15,
+            0.6,
+            6.3
+          ],
+          "radius": 0.5,
+          "halfHeight": 0.5,
+          "meshId": null,
+          "meshScale": [
+            1,
+            1,
+            1
+          ],
+          "offsetPosition": [
+            0,
+            0,
+            0
+          ],
+          "offsetRotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "extraShapes": null,
+          "restitution": 0,
+          "friction": 0.4,
+          "density": 1,
+          "isSensor": false,
+          "collisionGroups": {
+            "membership": 65535,
+            "filter": 65535
+          },
+          "contactForceEventThreshold": 0
+        }
+      }
+    },
+    {
+      "id": 29,
+      "parent": 21,
+      "components": {
+        "Transform": {
+          "position": [
+            -5,
+            -1.65,
+            -5
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            2,
+            0.3,
+            2
+          ]
+        },
+        "MeshRenderer": {
+          "meshId": null,
+          "primitive": "box",
+          "materialId": null,
+          "color": 1710622,
+          "textureId": null,
+          "visible": true,
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        "Name": {
+          "value": "Pit_NW"
+        },
+        "RigidBody": {
+          "type": "fixed",
+          "mass": null,
+          "linearDamping": 0,
+          "angularDamping": 0,
+          "gravityScale": 1,
+          "ccdEnabled": false,
+          "dominanceGroup": 0,
+          "canSleep": true,
+          "massProperties": null
+        },
+        "Collider": {
+          "shape": "box",
+          "halfExtents": [
+            1,
+            0.15,
+            1
+          ],
+          "radius": 0.5,
+          "halfHeight": 0.5,
+          "meshId": null,
+          "meshScale": [
+            1,
+            1,
+            1
+          ],
+          "offsetPosition": [
+            0,
+            0,
+            0
+          ],
+          "offsetRotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "extraShapes": null,
+          "restitution": 0,
+          "friction": 0.6,
+          "density": 1,
+          "isSensor": false,
+          "collisionGroups": {
+            "membership": 65535,
+            "filter": 65535
+          },
+          "contactForceEventThreshold": 0
+        }
+      }
+    },
+    {
+      "id": 30,
+      "parent": 21,
+      "components": {
+        "Transform": {
+          "position": [
+            5,
+            -1.65,
+            -5
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            2,
+            0.3,
+            2
+          ]
+        },
+        "MeshRenderer": {
+          "meshId": null,
+          "primitive": "box",
+          "materialId": null,
+          "color": 1710622,
+          "textureId": null,
+          "visible": true,
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        "Name": {
+          "value": "Pit_NE"
+        },
+        "RigidBody": {
+          "type": "fixed",
+          "mass": null,
+          "linearDamping": 0,
+          "angularDamping": 0,
+          "gravityScale": 1,
+          "ccdEnabled": false,
+          "dominanceGroup": 0,
+          "canSleep": true,
+          "massProperties": null
+        },
+        "Collider": {
+          "shape": "box",
+          "halfExtents": [
+            1,
+            0.15,
+            1
+          ],
+          "radius": 0.5,
+          "halfHeight": 0.5,
+          "meshId": null,
+          "meshScale": [
+            1,
+            1,
+            1
+          ],
+          "offsetPosition": [
+            0,
+            0,
+            0
+          ],
+          "offsetRotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "extraShapes": null,
+          "restitution": 0,
+          "friction": 0.6,
+          "density": 1,
+          "isSensor": false,
+          "collisionGroups": {
+            "membership": 65535,
+            "filter": 65535
+          },
+          "contactForceEventThreshold": 0
+        }
+      }
+    },
+    {
+      "id": 31,
+      "parent": 21,
+      "components": {
+        "Transform": {
+          "position": [
+            -5,
+            -1.65,
+            5
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            2,
+            0.3,
+            2
+          ]
+        },
+        "MeshRenderer": {
+          "meshId": null,
+          "primitive": "box",
+          "materialId": null,
+          "color": 1710622,
+          "textureId": null,
+          "visible": true,
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        "Name": {
+          "value": "Pit_SW"
+        },
+        "RigidBody": {
+          "type": "fixed",
+          "mass": null,
+          "linearDamping": 0,
+          "angularDamping": 0,
+          "gravityScale": 1,
+          "ccdEnabled": false,
+          "dominanceGroup": 0,
+          "canSleep": true,
+          "massProperties": null
+        },
+        "Collider": {
+          "shape": "box",
+          "halfExtents": [
+            1,
+            0.15,
+            1
+          ],
+          "radius": 0.5,
+          "halfHeight": 0.5,
+          "meshId": null,
+          "meshScale": [
+            1,
+            1,
+            1
+          ],
+          "offsetPosition": [
+            0,
+            0,
+            0
+          ],
+          "offsetRotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "extraShapes": null,
+          "restitution": 0,
+          "friction": 0.6,
+          "density": 1,
+          "isSensor": false,
+          "collisionGroups": {
+            "membership": 65535,
+            "filter": 65535
+          },
+          "contactForceEventThreshold": 0
+        }
+      }
+    },
+    {
+      "id": 32,
+      "parent": 21,
+      "components": {
+        "Transform": {
+          "position": [
+            5,
+            -1.65,
+            5
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            2,
+            0.3,
+            2
+          ]
+        },
+        "MeshRenderer": {
+          "meshId": null,
+          "primitive": "box",
+          "materialId": null,
+          "color": 1710622,
+          "textureId": null,
+          "visible": true,
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        "Name": {
+          "value": "Pit_SE"
+        },
+        "RigidBody": {
+          "type": "fixed",
+          "mass": null,
+          "linearDamping": 0,
+          "angularDamping": 0,
+          "gravityScale": 1,
+          "ccdEnabled": false,
+          "dominanceGroup": 0,
+          "canSleep": true,
+          "massProperties": null
+        },
+        "Collider": {
+          "shape": "box",
+          "halfExtents": [
+            1,
+            0.15,
+            1
+          ],
+          "radius": 0.5,
+          "halfHeight": 0.5,
+          "meshId": null,
+          "meshScale": [
+            1,
+            1,
+            1
+          ],
+          "offsetPosition": [
+            0,
+            0,
+            0
+          ],
+          "offsetRotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "extraShapes": null,
+          "restitution": 0,
+          "friction": 0.6,
+          "density": 1,
+          "isSensor": false,
+          "collisionGroups": {
+            "membership": 65535,
+            "filter": 65535
+          },
+          "contactForceEventThreshold": 0
+        }
+      }
+    },
+    {
+      "id": 33,
+      "parent": 18,
+      "components": {
+        "Transform": {
+          "position": [
+            0,
+            6,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "Light": {
+          "type": "ambient",
+          "color": 11583696,
+          "intensity": 0.95,
+          "castShadow": false
+        },
+        "Name": {
+          "value": "ArenaFill"
+        }
+      }
+    },
+    {
+      "id": 34,
+      "parent": 18,
+      "components": {
+        "Transform": {
+          "position": [
+            0,
+            0.18,
+            3.5
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "Name": {
+          "value": "Bot_Player_Chassis"
+        },
+        "RigidBody": {
+          "type": "dynamic",
+          "mass": null,
+          "linearDamping": 0.35,
+          "angularDamping": 2.5,
+          "gravityScale": 1,
+          "ccdEnabled": true,
+          "dominanceGroup": 0,
+          "canSleep": false,
+          "massProperties": {
+            "mass": 70,
+            "centerOfMass": [
+              0,
+              -0.08,
+              0
+            ],
+            "principalAngularInertia": [
+              4.098,
+              5.833,
+              2.464
+            ]
+          }
+        },
+        "Collider": {
+          "shape": "box",
+          "halfExtents": [
+            0.3,
+            0.125,
+            0.4
+          ],
+          "radius": 0.5,
+          "halfHeight": 0.5,
+          "meshId": null,
+          "meshScale": [
+            1,
+            1,
+            1
+          ],
+          "offsetPosition": [
+            0,
+            0,
+            0
+          ],
+          "offsetRotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "extraShapes": null,
+          "restitution": 0,
+          "friction": 0.5,
+          "density": 1,
+          "isSensor": false,
+          "collisionGroups": {
+            "membership": 65535,
+            "filter": 65535
+          },
+          "contactForceEventThreshold": 400
+        },
+        "Script": {
+          "behavior": "BotDrive",
+          "enabled": true
+        }
+      }
+    },
+    {
+      "id": 35,
+      "parent": 18,
+      "components": {
+        "Transform": {
+          "position": [
+            -0.36,
+            0.12,
+            3.22
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            0.08,
+            0.24,
+            0.24
+          ]
+        },
+        "MeshRenderer": {
+          "meshId": null,
+          "primitive": "sphere",
+          "materialId": null,
+          "color": 2236458,
+          "textureId": null,
+          "visible": true,
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        "Name": {
+          "value": "Bot_Player_Wheel_FL"
+        },
+        "RigidBody": {
+          "type": "dynamic",
+          "mass": 5,
+          "linearDamping": 0,
+          "angularDamping": 0.4,
+          "gravityScale": 1,
+          "ccdEnabled": true,
+          "dominanceGroup": 0,
+          "canSleep": false,
+          "massProperties": null
+        },
+        "Collider": {
+          "shape": "sphere",
+          "halfExtents": [
+            0.5,
+            0.5,
+            0.5
+          ],
+          "radius": 0.12,
+          "halfHeight": 0.5,
+          "meshId": null,
+          "meshScale": [
+            1,
+            1,
+            1
+          ],
+          "offsetPosition": [
+            0,
+            0,
+            0
+          ],
+          "offsetRotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "extraShapes": null,
+          "restitution": 0,
+          "friction": 0.6,
+          "density": 1,
+          "isSensor": false,
+          "collisionGroups": {
+            "membership": 65535,
+            "filter": 65535
+          },
+          "contactForceEventThreshold": 400
+        },
+        "Joint": {
+          "joints": [
+            {
+              "kind": "fixed",
+              "mode": "impulse",
+              "b": 34,
+              "anchorA": [
+                0,
+                0,
+                0
+              ],
+              "anchorB": [
+                -0.36,
+                -0.06,
+                -0.28
+              ],
+              "axis": null,
+              "limits": null,
+              "distance": null,
+              "breakForce": 4000,
+              "contactsEnabled": false,
+              "motor": null
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": 36,
+      "parent": 18,
+      "components": {
+        "Transform": {
+          "position": [
+            0.36,
+            0.12,
+            3.22
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            0.08,
+            0.24,
+            0.24
+          ]
+        },
+        "MeshRenderer": {
+          "meshId": null,
+          "primitive": "sphere",
+          "materialId": null,
+          "color": 2236458,
+          "textureId": null,
+          "visible": true,
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        "Name": {
+          "value": "Bot_Player_Wheel_FR"
+        },
+        "RigidBody": {
+          "type": "dynamic",
+          "mass": 5,
+          "linearDamping": 0,
+          "angularDamping": 0.4,
+          "gravityScale": 1,
+          "ccdEnabled": true,
+          "dominanceGroup": 0,
+          "canSleep": false,
+          "massProperties": null
+        },
+        "Collider": {
+          "shape": "sphere",
+          "halfExtents": [
+            0.5,
+            0.5,
+            0.5
+          ],
+          "radius": 0.12,
+          "halfHeight": 0.5,
+          "meshId": null,
+          "meshScale": [
+            1,
+            1,
+            1
+          ],
+          "offsetPosition": [
+            0,
+            0,
+            0
+          ],
+          "offsetRotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "extraShapes": null,
+          "restitution": 0,
+          "friction": 0.6,
+          "density": 1,
+          "isSensor": false,
+          "collisionGroups": {
+            "membership": 65535,
+            "filter": 65535
+          },
+          "contactForceEventThreshold": 400
+        },
+        "Joint": {
+          "joints": [
+            {
+              "kind": "fixed",
+              "mode": "impulse",
+              "b": 34,
+              "anchorA": [
+                0,
+                0,
+                0
+              ],
+              "anchorB": [
+                0.36,
+                -0.06,
+                -0.28
+              ],
+              "axis": null,
+              "limits": null,
+              "distance": null,
+              "breakForce": 4000,
+              "contactsEnabled": false,
+              "motor": null
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": 37,
+      "parent": 18,
+      "components": {
+        "Transform": {
+          "position": [
+            -0.36,
+            0.12,
+            3.78
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            0.08,
+            0.24,
+            0.24
+          ]
+        },
+        "MeshRenderer": {
+          "meshId": null,
+          "primitive": "sphere",
+          "materialId": null,
+          "color": 2236458,
+          "textureId": null,
+          "visible": true,
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        "Name": {
+          "value": "Bot_Player_Wheel_RL"
+        },
+        "RigidBody": {
+          "type": "dynamic",
+          "mass": 5,
+          "linearDamping": 0,
+          "angularDamping": 0.4,
+          "gravityScale": 1,
+          "ccdEnabled": true,
+          "dominanceGroup": 0,
+          "canSleep": false,
+          "massProperties": null
+        },
+        "Collider": {
+          "shape": "sphere",
+          "halfExtents": [
+            0.5,
+            0.5,
+            0.5
+          ],
+          "radius": 0.12,
+          "halfHeight": 0.5,
+          "meshId": null,
+          "meshScale": [
+            1,
+            1,
+            1
+          ],
+          "offsetPosition": [
+            0,
+            0,
+            0
+          ],
+          "offsetRotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "extraShapes": null,
+          "restitution": 0,
+          "friction": 0.6,
+          "density": 1,
+          "isSensor": false,
+          "collisionGroups": {
+            "membership": 65535,
+            "filter": 65535
+          },
+          "contactForceEventThreshold": 400
+        },
+        "Joint": {
+          "joints": [
+            {
+              "kind": "fixed",
+              "mode": "impulse",
+              "b": 34,
+              "anchorA": [
+                0,
+                0,
+                0
+              ],
+              "anchorB": [
+                -0.36,
+                -0.06,
+                0.28
+              ],
+              "axis": null,
+              "limits": null,
+              "distance": null,
+              "breakForce": 4000,
+              "contactsEnabled": false,
+              "motor": null
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": 38,
+      "parent": 18,
+      "components": {
+        "Transform": {
+          "position": [
+            0.36,
+            0.12,
+            3.78
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            0.08,
+            0.24,
+            0.24
+          ]
+        },
+        "MeshRenderer": {
+          "meshId": null,
+          "primitive": "sphere",
+          "materialId": null,
+          "color": 2236458,
+          "textureId": null,
+          "visible": true,
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        "Name": {
+          "value": "Bot_Player_Wheel_RR"
+        },
+        "RigidBody": {
+          "type": "dynamic",
+          "mass": 5,
+          "linearDamping": 0,
+          "angularDamping": 0.4,
+          "gravityScale": 1,
+          "ccdEnabled": true,
+          "dominanceGroup": 0,
+          "canSleep": false,
+          "massProperties": null
+        },
+        "Collider": {
+          "shape": "sphere",
+          "halfExtents": [
+            0.5,
+            0.5,
+            0.5
+          ],
+          "radius": 0.12,
+          "halfHeight": 0.5,
+          "meshId": null,
+          "meshScale": [
+            1,
+            1,
+            1
+          ],
+          "offsetPosition": [
+            0,
+            0,
+            0
+          ],
+          "offsetRotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "extraShapes": null,
+          "restitution": 0,
+          "friction": 0.6,
+          "density": 1,
+          "isSensor": false,
+          "collisionGroups": {
+            "membership": 65535,
+            "filter": 65535
+          },
+          "contactForceEventThreshold": 400
+        },
+        "Joint": {
+          "joints": [
+            {
+              "kind": "fixed",
+              "mode": "impulse",
+              "b": 34,
+              "anchorA": [
+                0,
+                0,
+                0
+              ],
+              "anchorB": [
+                0.36,
+                -0.06,
+                0.28
+              ],
+              "axis": null,
+              "limits": null,
+              "distance": null,
+              "breakForce": 4000,
+              "contactsEnabled": false,
+              "motor": null
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": 39,
+      "parent": 34,
+      "components": {
+        "Transform": {
+          "position": [
+            0,
+            0.06,
+            -0.42
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            0.3,
+            0.06,
+            0.06
+          ]
+        },
+        "MeshRenderer": {
+          "meshId": null,
+          "primitive": "box",
+          "materialId": null,
+          "color": 16763955,
+          "textureId": null,
+          "visible": true,
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        "Name": {
+          "value": "Bot_Player_FrontMarker"
+        }
+      }
+    },
+    {
+      "id": 40,
+      "parent": 34,
+      "components": {
+        "Transform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            0.6,
+            0.25,
+            0.8
+          ]
+        },
+        "MeshRenderer": {
+          "meshId": null,
+          "primitive": "box",
+          "materialId": null,
+          "color": 2976991,
+          "textureId": null,
+          "visible": true,
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        "Name": {
+          "value": "Bot_Player_ChassisVisual"
+        }
+      }
+    }
+  ]
+}

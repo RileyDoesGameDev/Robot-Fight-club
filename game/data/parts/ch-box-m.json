@@ -1,0 +1,159 @@
+{
+  "id": "ch-box-m",
+  "category": "chassis",
+  "displayName": "Boxer MW Chassis",
+  "mass": 45,
+  "hp": 300,
+  "cost": 220,
+  "mesh": null,
+  "primitive": "box",
+  "visualScale": [
+    0.6,
+    0.25,
+    0.8
+  ],
+  "colliderSpec": {
+    "shape": "box",
+    "halfExtents": [
+      0.3,
+      0.125,
+      0.4
+    ],
+    "friction": 0.5,
+    "restitution": 0
+  },
+  "sockets": [
+    {
+      "id": "wheel_fl",
+      "position": [
+        -0.36,
+        -0.06,
+        -0.28
+      ],
+      "accepts": [
+        "wheel"
+      ],
+      "breakForce": 4000
+    },
+    {
+      "id": "wheel_fr",
+      "position": [
+        0.36,
+        -0.06,
+        -0.28
+      ],
+      "accepts": [
+        "wheel"
+      ],
+      "breakForce": 4000
+    },
+    {
+      "id": "wheel_rl",
+      "position": [
+        -0.36,
+        -0.06,
+        0.28
+      ],
+      "accepts": [
+        "wheel"
+      ],
+      "breakForce": 4000
+    },
+    {
+      "id": "wheel_rr",
+      "position": [
+        0.36,
+        -0.06,
+        0.28
+      ],
+      "accepts": [
+        "wheel"
+      ],
+      "breakForce": 4000
+    },
+    {
+      "id": "weapon_top",
+      "position": [
+        0,
+        0.16,
+        -0.2
+      ],
+      "accepts": [
+        "weapon"
+      ],
+      "breakForce": 12000
+    },
+    {
+      "id": "armor_front",
+      "position": [
+        0,
+        0.02,
+        -0.42
+      ],
+      "accepts": [
+        "armor"
+      ],
+      "breakForce": 2500
+    },
+    {
+      "id": "armor_left",
+      "position": [
+        -0.32,
+        0.02,
+        0
+      ],
+      "accepts": [
+        "armor"
+      ],
+      "breakForce": 2500
+    },
+    {
+      "id": "armor_right",
+      "position": [
+        0.32,
+        0.02,
+        0
+      ],
+      "accepts": [
+        "armor"
+      ],
+      "breakForce": 2500
+    },
+    {
+      "id": "armor_rear",
+      "position": [
+        0,
+        0.02,
+        0.42
+      ],
+      "accepts": [
+        "armor"
+      ],
+      "breakForce": 2500
+    },
+    {
+      "id": "motor_bay",
+      "position": [
+        0,
+        -0.02,
+        0.2
+      ],
+      "accepts": [
+        "motor"
+      ],
+      "breakForce": 9000
+    }
+  ],
+  "stats": {
+    "centerOfMassOffset": [
+      0,
+      -0.08,
+      0
+    ],
+    "principalAngularInertia": [
+      4.098,
+      5.833,
+      2.464
+    ]
+  }
+}

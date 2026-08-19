@@ -1,0 +1,39 @@
+{
+  "id": "wp-spinner-h",
+  "category": "weapon",
+  "displayName": "Horizontal Spinner",
+  "mass": 18,
+  "hp": 150,
+  "cost": 300,
+  "mesh": null,
+  "primitive": "box",
+  "visualScale": [
+    0.7,
+    0.06,
+    0.12
+  ],
+  "requiresSocketType": "weapon",
+  "colliderSpec": {
+    "shape": "box",
+    "halfExtents": [
+      0.35,
+      0.03,
+      0.06
+    ],
+    "friction": 0.3,
+    "restitution": 0.1
+  },
+  "stats": {
+    "type": "spinnerHorizontal",
+    "axis": [
+      0,
+      1,
+      0
+    ],
+    "targetRpm": 1400,
+    "spinUpSeconds": 2.4,
+    "motorMaxForce": 900,
+    "energyLossPerHit": 0.35,
+    "jamThresholdRpm": 180
+  }
+}

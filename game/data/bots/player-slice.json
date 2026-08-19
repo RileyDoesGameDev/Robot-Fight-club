@@ -1,0 +1,44 @@
+{
+  "name": "Blue Ruin",
+  "chassisId": "ch-box-m",
+  "paint": {
+    "primary": "#2d6cdf",
+    "secondary": "#ffcc33"
+  },
+  "attachments": [
+    {
+      "socketId": "wheel_fl",
+      "partId": "wh-m"
+    },
+    {
+      "socketId": "wheel_fr",
+      "partId": "wh-m"
+    },
+    {
+      "socketId": "wheel_rl",
+      "partId": "wh-m"
+    },
+    {
+      "socketId": "wheel_rr",
+      "partId": "wh-m"
+    },
+    {
+      "socketId": "weapon_top",
+      "partId": "wp-spinner-h"
+    },
+    {
+      "socketId": "armor_front",
+      "partId": "ar-light"
+    },
+    {
+      "socketId": "motor_bay",
+      "partId": "mt-balanced"
+    }
+  ],
+  "derived": {
+    "totalMassKg": 98,
+    "weightClass": "middle",
+    "armorTotal": 90,
+    "weaponRating": 150
+  }
+}

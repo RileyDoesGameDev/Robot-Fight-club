@@ -1,0 +1,150 @@
+{
+  "id": "ch-wedge-m",
+  "category": "chassis",
+  "displayName": "Wedge MW Chassis",
+  "mass": 40,
+  "hp": 280,
+  "cost": 240,
+  "mesh": null,
+  "primitive": "box",
+  "visualScale": [
+    0.6,
+    0.22,
+    0.9
+  ],
+  "colliderSpec": {
+    "shape": "box",
+    "halfExtents": [
+      0.3,
+      0.11,
+      0.45
+    ],
+    "friction": 0.45,
+    "restitution": 0
+  },
+  "sockets": [
+    {
+      "id": "wheel_fl",
+      "position": [
+        -0.36,
+        -0.06,
+        -0.28
+      ],
+      "accepts": [
+        "wheel"
+      ],
+      "breakForce": 4000
+    },
+    {
+      "id": "wheel_fr",
+      "position": [
+        0.36,
+        -0.06,
+        -0.28
+      ],
+      "accepts": [
+        "wheel"
+      ],
+      "breakForce": 4000
+    },
+    {
+      "id": "wheel_rl",
+      "position": [
+        -0.36,
+        -0.06,
+        0.28
+      ],
+      "accepts": [
+        "wheel"
+      ],
+      "breakForce": 4000
+    },
+    {
+      "id": "wheel_rr",
+      "position": [
+        0.36,
+        -0.06,
+        0.28
+      ],
+      "accepts": [
+        "wheel"
+      ],
+      "breakForce": 4000
+    },
+    {
+      "id": "weapon_top",
+      "position": [
+        0,
+        0.16,
+        -0.2
+      ],
+      "accepts": [
+        "weapon"
+      ],
+      "breakForce": 12000
+    },
+    {
+      "id": "armor_front",
+      "position": [
+        0,
+        0.02,
+        -0.42
+      ],
+      "accepts": [
+        "armor"
+      ],
+      "breakForce": 2500
+    },
+    {
+      "id": "armor_left",
+      "position": [
+        -0.32,
+        0.02,
+        0
+      ],
+      "accepts": [
+        "armor"
+      ],
+      "breakForce": 2500
+    },
+    {
+      "id": "armor_right",
+      "position": [
+        0.32,
+        0.02,
+        0
+      ],
+      "accepts": [
+        "armor"
+      ],
+      "breakForce": 2500
+    },
+    {
+      "id": "armor_rear",
+      "position": [
+        0,
+        0.02,
+        0.42
+      ],
+      "accepts": [
+        "armor"
+      ],
+      "breakForce": 2500
+    },
+    {
+      "id": "motor_bay",
+      "position": [
+        0,
+        -0.02,
+        0.2
+      ],
+      "accepts": [
+        "motor"
+      ],
+      "breakForce": 9000
+    }
+  ],
+  "stats": {
+    "note": "Front geometry does the work; a wedge wins on shape, not on an actuator (T-4.4)."
+  }
+}

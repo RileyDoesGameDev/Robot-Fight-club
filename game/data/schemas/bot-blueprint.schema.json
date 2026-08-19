@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "battle-bots/bot-blueprint",
+  "title": "BotBlueprint",
+  "description": "The save format shared by Workshop, Demo Center and Arena (T-2.2).",
+  "type": "object",
+  "required": [
+    "name",
+    "chassisId",
+    "attachments"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "$comment": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "chassisId": {
+      "type": "string"
+    },
+    "paint": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "primary": {
+          "type": "string"
+        },
+        "secondary": {
+          "type": "string"
+        }
+      }
+    },
+    "attachments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "socketId",
+          "partId"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "socketId": {
+            "type": "string"
+          },
+          "partId": {
+            "type": "string"
+          },
+          "paint": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "derived": {
+      "type": "object",
+      "description": "Cached totals recomputed on load; never authoritative.",
+      "additionalProperties": false,
+      "properties": {
+        "totalMassKg": {
+          "type": "number"
+        },
+        "weightClass": {
+          "type": "string"
+        },
+        "armorTotal": {
+          "type": "number"
+        },
+        "weaponRating": {
+          "type": "number"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,98 @@
+{
+  "formatVersion": 1,
+  "entities": [
+    {
+      "id": 6,
+      "parent": null,
+      "components": {
+        "Transform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "Name": {
+          "value": "Root"
+        }
+      }
+    },
+    {
+      "id": 7,
+      "parent": 6,
+      "components": {
+        "Transform": {
+          "position": [
+            5,
+            4,
+            6
+          ],
+          "rotation": [
+            -0.198,
+            0.295,
+            0.063,
+            0.932
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "Camera": {
+          "fov": 50,
+          "near": 0.1,
+          "far": 1000,
+          "active": true
+        },
+        "Name": {
+          "value": "Main Camera"
+        }
+      }
+    },
+    {
+      "id": 8,
+      "parent": 6,
+      "components": {
+        "Transform": {
+          "position": [
+            4,
+            6,
+            3
+          ],
+          "rotation": [
+            -0.383,
+            0,
+            0,
+            0.924
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "Light": {
+          "type": "directional",
+          "color": 16777215,
+          "intensity": 1.2,
+          "castShadow": false
+        },
+        "Name": {
+          "value": "Directional Light"
+        }
+      }
+    }
+  ]
+}

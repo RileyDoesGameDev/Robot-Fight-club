@@ -1,0 +1,26 @@
+{
+  "id": "wh-m",
+  "category": "wheel",
+  "displayName": "Standard Wheel",
+  "mass": 5,
+  "hp": 60,
+  "cost": 60,
+  "mesh": null,
+  "primitive": "sphere",
+  "visualScale": [
+    0.08,
+    0.24,
+    0.24
+  ],
+  "requiresSocketType": "wheel",
+  "colliderSpec": {
+    "shape": "sphere",
+    "radius": 0.12,
+    "friction": 0.6,
+    "restitution": 0
+  },
+  "stats": {
+    "driveScale": 1,
+    "gripScale": 1
+  }
+}

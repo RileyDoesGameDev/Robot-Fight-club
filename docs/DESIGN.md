@@ -1,0 +1,189 @@
+# Battle Bots — Design Doc
+
+Working title: **Battle Bots** · Engine: **DSD SMPL-Engine** · Solo developer · 8 weeks, feature-complete by end of week 6.
+
+This is the contract referenced by `TASKS.md`. Where this document and the proposal disagree, this document wins — it records decisions actually taken and measured. Numbers marked **(measured)** came from a real run in the engine, not an estimate.
+
+---
+
+## 1. Core loop
+
+**Create → Test → Destroy**, mirroring the show.
+
+| Stage | Scene | What the player does |
+|---|---|---|
+| Create | `Workshop` | Fit parts to chassis sockets, paint, name, save a blueprint |
+| Test | `DemoCenter` | Spar against a pre-built AI opponent, learn controls, tune |
+| Destroy | `Arena01` | Fight an AI opponent or a local human; parts break off |
+| — | `PostMatch` | Damage summary → "revise your bot" back into the Workshop |
+
+Win condition: **knockout** (all drive parts destroyed = immobilised, or chassis HP reaches zero) or, on time expiry, **most damage dealt**.
+
+---
+
+## 2. Units, scale, and mass budget (T-0.16)
+
+- **1 world unit = 1 metre. 1 mass unit = 1 kilogram.** Gravity is −Y.
+- Arena playfield: **12 × 12 m**, walls 1.2 m high and 0.3 m thick, inner wall faces at ±6.0 m.
+- Bot footprint: 0.6–0.9 m long, 0.6–0.72 m wide, ≈0.25–0.30 m tall.
+- **Socket lattice: 0.02 m.** Every socket offset in `game/data/parts/*.json` is an integer multiple of it, enforced by `game/data/validate.js`.
+- Editor conventions (T-0.12): up-axis **Y**, grid unit **metre**, gizmo snap **on** (1 m — right for arena blockout). Socket precision does *not* come from gizmo dragging; sockets are authored numerically in JSON, which is why a 1 m snap and a 0.02 m lattice coexist without conflict.
+
+### Weight classes
+
+| Class | Mass cap | Seed blueprint |
+|---|---|---|
+| Lightweight | ≤ 60 kg | — |
+| Middleweight | ≤ 110 kg | `player-slice` (98 kg), `opp-wedge` (89 kg) |
+| Heavyweight | ≤ 180 kg | `opp-brick` (168 kg) |
+
+The Workshop refuses to save an over-cap bot (T-4.8). Mass is always the **sum of every attached `PartDef.mass`** — never hand-authored.
+
+---
+
+## 3. Build system: sockets, not freeform (T-2.3, T-2.4)
+
+Adopted scope cut from the proposal: **fixed attachment points**, explicitly not freeform placement.
+
+- A chassis `PartDef` declares its sockets: `id`, local `position`, optional `rotation`, `accepts[]` (categories), and `breakForce` (N).
+- **The JSON is the single source of truth.** The assembler creates a child entity per socket at runtime; there is no `Socket` component and no naming-convention parsing. One mechanism, so the two can never disagree.
+- A part declares `requiresSocketType`; the socket declares `accepts`. Both must agree or `validate.js` fails.
+
+### Body/visual split — a real constraint, not a style choice
+
+A part's **body entity keeps `Transform.scale = [1,1,1]`**; its visual size lives on a unit-scaled child (`*_ChassisVisual`) or comes from an imported mesh.
+
+Why: `Transform.scale` is inherited by children, so a non-uniform scale on the chassis body (e.g. `[0.6, 0.25, 0.8]`) would distort every socket child's offset. Colliders are unaffected either way — `Collider.halfExtents` is passed to Rapier raw and **ignores `Transform.scale`** — so the visual and the collider must be sized independently and kept in agreement by hand. This bit the week-1 greybox and is why `Bot_Player_Chassis` carries the collider while `Bot_Player_ChassisVisual` carries the box.
+
+---
+
+## 4. Drivetrain (T-1.7 decision)
+
+**Chosen: direct chassis drive.** Propulsion is a per-step impulse applied to the chassis body. The four wheels are real dynamic bodies attached by breakable `fixed` joints, but they carry **no motors and provide no propulsion**.
+
+Rejected: revolute wheel joints with velocity motors. More physically honest, but it adds four motorised constraints per bot and couples drive feel to joint stiffness.
+
+Why this combination is the right trade: it keeps drive stable and cheap while still giving the destruction system real, detachable wheel bodies to shear off (T-5.4). A lost or damaged wheel is applied as a per-side `driveScale` multiplier in `BotDrive.ts` rather than as a change in traction.
+
+Revisit only if traction nuance turns out to matter more than the frame budget — and per §7 the frame budget is not currently the constraint.
+
+### Measured drive feel (T-1.10, T-1.11)
+
+Greybox bot: 70 kg chassis + 4 × 5 kg wheels = **90 kg**, CoM offset −0.08 m in Y, `linearDamping 0.35`, `angularDamping 2.5`, CCD on, wheel friction 0.6, floor friction 0.9.
+
+| Property | Value | Note |
+|---|---|---|
+| Top speed | **4.53 m/s** (measured) | Asymptotic; 3.4 m/s by 0.5 s, 4.0 by 1.5 s |
+| Peak yaw rate | **2.33 rad/s ≈ 133 °/s** (measured) | Turn-in-place, no positional drift |
+| Idle drift over 0.5 s | **0.0001 m** (measured) | Rests stably; no jitter |
+| Coast-down from top speed | < 0.03 m/s after 1 s (measured) | Damping-dominated stop |
+| Wall impact at top speed | Rests at **z = −5.600** (measured) | Wall face −6.0 + chassis half-length 0.4 → **no tunneling** |
+
+Tuning constants live at the top of `game/scripts/BotDrive.ts`. `MAX_SPEED = 7.0` is a *safety ceiling*, not the achieved speed — real top speed is set by damping and wheel drag.
+
+### Self-righting (T-1.12) — implemented, not yet fully validated
+
+`SELF_RIGHT_IMPULSE = 700` N·s upward plus `SELF_RIGHT_TORQUE = 1600` N·m·s rolled about the chassis long axis, on a 2 s cooldown, gated on `up.y < 0.35`. Traction gating verified: **a flipped bot cannot drive** (measured).
+
+Honest caveat: the greybox bot **cannot rest fully inverted** — with wheels on rigid joints it settles to `up.y ≈ 0.47` on its own, so there is no stable "stuck upside down" state to test against. 700/1600 did reach fully upright (`up.y 0.998`) from a forced flip; larger values overshoot and land back down. **Re-validate against real chassis geometry in week 2** before trusting these numbers.
+
+---
+
+## 5. Damage model (T-3.1 – T-3.3)
+
+Discrete component health, per the adopted proposal decision — not free-fracture.
+
+State per part: `intact → damaged → destroyed`, with `damaged` at **≤ 50 % HP**.
+
+```
+impactEnergyJ  = ½ · effectiveMass · relativeVelocity²
+raw            = impactEnergyJ · weaponFactor · (1 − armorReduction)
+damage         = raw < damageFloorJ ? 0 : raw · damageScaleHpPerJ
+```
+
+Constants live in `game/data/damage.json` so tuning never needs a recompile:
+
+| Knob | Value |
+|---|---|
+| `damageFloorJ` | 150 — shoves must not chip armour |
+| `damageScaleHpPerJ` | 0.02 → a 3000 J hit ≈ 60 HP pre-armour |
+| `weaponFactor` | spinner 1.0, drum 0.9, hammer 1.3, flipper 0.3, wedge 0.15 |
+| `armorReduction` | light 0.15, medium 0.30, heavy 0.45 |
+| `contactForceEventThresholdN` | 400 — below this, no contact event is even emitted |
+
+The damage signal source is **`Collider.contactForceEventThreshold`** (confirmed present, T-1.14) feeding `physics.contact`. Setting it per part is what keeps the event stream affordable (T-3.4).
+
+### Functional degradation (T-3.6) — what makes damage matter
+
+| Part | `damaged` | `destroyed` |
+|---|---|---|
+| Wheel | drive torque × 0.55 on that side | that side stops driving |
+| Weapon | RPM × 0.6 | no attack |
+| Armor | reduced protection | hitbox exposed |
+| Motor | reduced output | drive dead |
+
+Progressive weakening (T-5.5): a `damaged` part's joint `breakForce` is multiplied by **0.5**, so accumulated hits eventually shear it off.
+
+---
+
+## 6. Destruction (T-5.1 – T-5.6)
+
+**No fracture solver is needed.** `Joint.breakForce` ships natively (confirmed, T-1.13): the joint disconnects and emits `physics.jointBroken` when its solver impulse exceeds `breakForce × timestep`. The "custom breakable-joint system" in the proposal is therefore *configuration plus event handling*.
+
+Seed `breakForce` by socket category:
+
+| Socket | breakForce (N) |
+|---|---|
+| Armor plate | 2 500 |
+| Wheel mount | 4 000 |
+| Motor | 9 000 |
+| Weapon head | 12 000 |
+
+Curated breakable set (adopted scope cut): **wheels, weapon head, armor plates.** Not every part, and no free-fracture.
+
+A force-break is **runtime state, not an edit** — the authored joint returns on scene reload, which is what makes match reset tractable (still to be verified end-to-end, T-1.15 / T-5.8).
+
+---
+
+## 7. Performance budget (T-1.17)
+
+**Measured:** one bot (5 dynamic bodies, 4 joints) plus the full arena costs **0.055 ms per fixed step** — about **300× headroom** inside a 16.67 ms frame at 60 Hz.
+
+This is stepping cost in isolation and excludes rendering, so it is a ceiling on the physics side only. Even so, risk **R1** ("physics budget can't carry 2 bots + debris") is far less threatening than the proposal assumed: two full bots plus generous debris is nowhere near the limit. Debris caps (T-5.3) remain worth having, but as a rendering and readability measure rather than a solver rescue.
+
+---
+
+## 8. Controls (T-0.13)
+
+| Action | Key | Notes |
+|---|---|---|
+| `drive.forward` / `drive.back` | `W` / `S` (also `↑` / `↓`) | |
+| `turn.left` / `turn.right` | `A` / `D` (also `←` / `→`) | |
+| `weapon.primary` | `Space` | spin up / swing |
+| `weapon.secondary` | `Left Shift` | reserved |
+| `bot.selfRight` | `R` | 2 s cooldown, only while flipped |
+| `ui.pause` | `Escape` | |
+
+Input is collapsed to **left/right track throttle** and then recombined into forward + yaw, so the eventual two-stick gamepad mapping and this keyboard mapping run the same code path. Bindings are mirrored in `game/data/input-map.json`.
+
+Player 2 and gamepad support is T-6.6 and is the one week-6 item flagged to spike early.
+
+---
+
+## 9. Part list v1
+
+14 parts ship in `game/data/parts/`. Weapons beyond the spinner and passive wedge are week 4 (T-4.1 – T-4.4).
+
+- **Chassis** — `ch-box-m` (45 kg), `ch-wedge-m` (40 kg), `ch-brick-h` (80 kg)
+- **Wheels** — `wh-s` (3 kg), `wh-m` (5 kg), `wh-l` (8 kg)
+- **Weapons** — `wp-spinner-h` (18 kg, horizontal spinner), `wp-wedge-p` (10 kg, passive)
+- **Armor** — `ar-light` (6 kg), `ar-med` (12 kg), `ar-heavy` (20 kg)
+- **Motors** — `mt-speed` (7 kg), `mt-balanced` (9 kg), `mt-torque` (12 kg)
+
+Every chassis exposes the same ten sockets: 4 × wheel, 1 × weapon (top), 4 × armor, 1 × motor.
+
+---
+
+## 10. Out of scope
+
+Online multiplayer · ML-trained opponent AI · general free-fracture destruction · freeform (non-socket) building. All four were cut deliberately in §4 of the proposal. Local multiplayer and workshop customisation are **kept**.

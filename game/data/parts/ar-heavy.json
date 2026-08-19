@@ -1,0 +1,28 @@
+{
+  "id": "ar-heavy",
+  "category": "armor",
+  "displayName": "Heavy Plate",
+  "mass": 20,
+  "hp": 200,
+  "cost": 190,
+  "mesh": null,
+  "primitive": "box",
+  "visualScale": [
+    0.5,
+    0.18,
+    0.09
+  ],
+  "requiresSocketType": "armor",
+  "armorTier": "heavy",
+  "colliderSpec": {
+    "shape": "box",
+    "halfExtents": [
+      0.25,
+      0.09,
+      0.045
+    ],
+    "friction": 0.4,
+    "restitution": 0
+  },
+  "stats": {}
+}

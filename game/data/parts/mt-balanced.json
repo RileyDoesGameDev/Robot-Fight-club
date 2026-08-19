@@ -1,0 +1,31 @@
+{
+  "id": "mt-balanced",
+  "category": "motor",
+  "displayName": "Balanced Drive",
+  "mass": 9,
+  "hp": 80,
+  "cost": 140,
+  "mesh": null,
+  "primitive": "box",
+  "visualScale": [
+    0.22,
+    0.13,
+    0.26
+  ],
+  "requiresSocketType": "motor",
+  "colliderSpec": {
+    "shape": "box",
+    "halfExtents": [
+      0.11,
+      0.065,
+      0.13
+    ],
+    "friction": 0.4,
+    "restitution": 0
+  },
+  "stats": {
+    "driveForceMultiplier": 1,
+    "turnTorqueMultiplier": 1,
+    "maxSpeedMultiplier": 1
+  }
+}

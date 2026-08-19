@@ -1,0 +1,30 @@
+{
+  "id": "wp-wedge-p",
+  "category": "weapon",
+  "displayName": "Passive Wedge",
+  "mass": 10,
+  "hp": 180,
+  "cost": 120,
+  "mesh": null,
+  "primitive": "box",
+  "visualScale": [
+    0.58,
+    0.1,
+    0.3
+  ],
+  "requiresSocketType": "weapon",
+  "colliderSpec": {
+    "shape": "box",
+    "halfExtents": [
+      0.29,
+      0.05,
+      0.15
+    ],
+    "friction": 0.35,
+    "restitution": 0
+  },
+  "stats": {
+    "type": "wedge",
+    "note": "No actuator - geometry only (T-4.4)."
+  }
+}
