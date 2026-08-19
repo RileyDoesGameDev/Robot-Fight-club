@@ -1,0 +1,1007 @@
+{
+  "$generated": "by game/data/build-bundle.js — do not hand-edit",
+  "parts": {
+    "ar-heavy": {
+      "id": "ar-heavy",
+      "category": "armor",
+      "displayName": "Heavy Plate",
+      "mass": 20,
+      "hp": 200,
+      "cost": 190,
+      "mesh": null,
+      "primitive": "box",
+      "visualScale": [
+        0.5,
+        0.18,
+        0.09
+      ],
+      "requiresSocketType": "armor",
+      "armorTier": "heavy",
+      "colliderSpec": {
+        "shape": "box",
+        "halfExtents": [
+          0.25,
+          0.09,
+          0.045
+        ],
+        "friction": 0.4,
+        "restitution": 0
+      },
+      "stats": {}
+    },
+    "ar-light": {
+      "id": "ar-light",
+      "category": "armor",
+      "displayName": "Light Plate",
+      "mass": 6,
+      "hp": 90,
+      "cost": 70,
+      "mesh": null,
+      "primitive": "box",
+      "visualScale": [
+        0.5,
+        0.14,
+        0.04
+      ],
+      "requiresSocketType": "armor",
+      "armorTier": "light",
+      "colliderSpec": {
+        "shape": "box",
+        "halfExtents": [
+          0.25,
+          0.07,
+          0.02
+        ],
+        "friction": 0.4,
+        "restitution": 0
+      },
+      "stats": {}
+    },
+    "ar-med": {
+      "id": "ar-med",
+      "category": "armor",
+      "displayName": "Medium Plate",
+      "mass": 12,
+      "hp": 140,
+      "cost": 120,
+      "mesh": null,
+      "primitive": "box",
+      "visualScale": [
+        0.5,
+        0.16,
+        0.06
+      ],
+      "requiresSocketType": "armor",
+      "armorTier": "medium",
+      "colliderSpec": {
+        "shape": "box",
+        "halfExtents": [
+          0.25,
+          0.08,
+          0.03
+        ],
+        "friction": 0.4,
+        "restitution": 0
+      },
+      "stats": {}
+    },
+    "ch-box-m": {
+      "id": "ch-box-m",
+      "category": "chassis",
+      "displayName": "Boxer MW Chassis",
+      "mass": 45,
+      "hp": 300,
+      "cost": 220,
+      "mesh": null,
+      "primitive": "box",
+      "visualScale": [
+        0.6,
+        0.25,
+        0.8
+      ],
+      "colliderSpec": {
+        "shape": "box",
+        "halfExtents": [
+          0.3,
+          0.125,
+          0.4
+        ],
+        "friction": 0.5,
+        "restitution": 0
+      },
+      "sockets": [
+        {
+          "id": "wheel_fl",
+          "position": [
+            -0.36,
+            -0.06,
+            -0.28
+          ],
+          "accepts": [
+            "wheel"
+          ],
+          "breakForce": 4000
+        },
+        {
+          "id": "wheel_fr",
+          "position": [
+            0.36,
+            -0.06,
+            -0.28
+          ],
+          "accepts": [
+            "wheel"
+          ],
+          "breakForce": 4000
+        },
+        {
+          "id": "wheel_rl",
+          "position": [
+            -0.36,
+            -0.06,
+            0.28
+          ],
+          "accepts": [
+            "wheel"
+          ],
+          "breakForce": 4000
+        },
+        {
+          "id": "wheel_rr",
+          "position": [
+            0.36,
+            -0.06,
+            0.28
+          ],
+          "accepts": [
+            "wheel"
+          ],
+          "breakForce": 4000
+        },
+        {
+          "id": "weapon_top",
+          "position": [
+            0,
+            0.16,
+            -0.2
+          ],
+          "accepts": [
+            "weapon"
+          ],
+          "breakForce": 12000
+        },
+        {
+          "id": "armor_front",
+          "position": [
+            0,
+            0.02,
+            -0.42
+          ],
+          "accepts": [
+            "armor"
+          ],
+          "breakForce": 2500
+        },
+        {
+          "id": "armor_left",
+          "position": [
+            -0.32,
+            0.02,
+            0
+          ],
+          "accepts": [
+            "armor"
+          ],
+          "breakForce": 2500
+        },
+        {
+          "id": "armor_right",
+          "position": [
+            0.32,
+            0.02,
+            0
+          ],
+          "accepts": [
+            "armor"
+          ],
+          "breakForce": 2500
+        },
+        {
+          "id": "armor_rear",
+          "position": [
+            0,
+            0.02,
+            0.42
+          ],
+          "accepts": [
+            "armor"
+          ],
+          "breakForce": 2500
+        },
+        {
+          "id": "motor_bay",
+          "position": [
+            0,
+            -0.02,
+            0.2
+          ],
+          "accepts": [
+            "motor"
+          ],
+          "breakForce": 9000
+        }
+      ],
+      "stats": {
+        "centerOfMassOffset": [
+          0,
+          -0.08,
+          0
+        ],
+        "principalAngularInertia": [
+          4.098,
+          5.833,
+          2.464
+        ]
+      }
+    },
+    "ch-brick-h": {
+      "id": "ch-brick-h",
+      "category": "chassis",
+      "displayName": "Brick HW Chassis",
+      "mass": 80,
+      "hp": 420,
+      "cost": 340,
+      "mesh": null,
+      "primitive": "box",
+      "visualScale": [
+        0.72,
+        0.3,
+        0.9
+      ],
+      "colliderSpec": {
+        "shape": "box",
+        "halfExtents": [
+          0.36,
+          0.15,
+          0.45
+        ],
+        "friction": 0.55,
+        "restitution": 0
+      },
+      "sockets": [
+        {
+          "id": "wheel_fl",
+          "position": [
+            -0.36,
+            -0.06,
+            -0.28
+          ],
+          "accepts": [
+            "wheel"
+          ],
+          "breakForce": 4000
+        },
+        {
+          "id": "wheel_fr",
+          "position": [
+            0.36,
+            -0.06,
+            -0.28
+          ],
+          "accepts": [
+            "wheel"
+          ],
+          "breakForce": 4000
+        },
+        {
+          "id": "wheel_rl",
+          "position": [
+            -0.36,
+            -0.06,
+            0.28
+          ],
+          "accepts": [
+            "wheel"
+          ],
+          "breakForce": 4000
+        },
+        {
+          "id": "wheel_rr",
+          "position": [
+            0.36,
+            -0.06,
+            0.28
+          ],
+          "accepts": [
+            "wheel"
+          ],
+          "breakForce": 4000
+        },
+        {
+          "id": "weapon_top",
+          "position": [
+            0,
+            0.16,
+            -0.2
+          ],
+          "accepts": [
+            "weapon"
+          ],
+          "breakForce": 12000
+        },
+        {
+          "id": "armor_front",
+          "position": [
+            0,
+            0.02,
+            -0.42
+          ],
+          "accepts": [
+            "armor"
+          ],
+          "breakForce": 2500
+        },
+        {
+          "id": "armor_left",
+          "position": [
+            -0.32,
+            0.02,
+            0
+          ],
+          "accepts": [
+            "armor"
+          ],
+          "breakForce": 2500
+        },
+        {
+          "id": "armor_right",
+          "position": [
+            0.32,
+            0.02,
+            0
+          ],
+          "accepts": [
+            "armor"
+          ],
+          "breakForce": 2500
+        },
+        {
+          "id": "armor_rear",
+          "position": [
+            0,
+            0.02,
+            0.42
+          ],
+          "accepts": [
+            "armor"
+          ],
+          "breakForce": 2500
+        },
+        {
+          "id": "motor_bay",
+          "position": [
+            0,
+            -0.02,
+            0.2
+          ],
+          "accepts": [
+            "motor"
+          ],
+          "breakForce": 9000
+        }
+      ],
+      "stats": {
+        "centerOfMassOffset": [
+          0,
+          -0.1,
+          0
+        ]
+      }
+    },
+    "ch-wedge-m": {
+      "id": "ch-wedge-m",
+      "category": "chassis",
+      "displayName": "Wedge MW Chassis",
+      "mass": 40,
+      "hp": 280,
+      "cost": 240,
+      "mesh": null,
+      "primitive": "box",
+      "visualScale": [
+        0.6,
+        0.22,
+        0.9
+      ],
+      "colliderSpec": {
+        "shape": "box",
+        "halfExtents": [
+          0.3,
+          0.11,
+          0.45
+        ],
+        "friction": 0.45,
+        "restitution": 0
+      },
+      "sockets": [
+        {
+          "id": "wheel_fl",
+          "position": [
+            -0.36,
+            -0.06,
+            -0.28
+          ],
+          "accepts": [
+            "wheel"
+          ],
+          "breakForce": 4000
+        },
+        {
+          "id": "wheel_fr",
+          "position": [
+            0.36,
+            -0.06,
+            -0.28
+          ],
+          "accepts": [
+            "wheel"
+          ],
+          "breakForce": 4000
+        },
+        {
+          "id": "wheel_rl",
+          "position": [
+            -0.36,
+            -0.06,
+            0.28
+          ],
+          "accepts": [
+            "wheel"
+          ],
+          "breakForce": 4000
+        },
+        {
+          "id": "wheel_rr",
+          "position": [
+            0.36,
+            -0.06,
+            0.28
+          ],
+          "accepts": [
+            "wheel"
+          ],
+          "breakForce": 4000
+        },
+        {
+          "id": "weapon_top",
+          "position": [
+            0,
+            0.16,
+            -0.2
+          ],
+          "accepts": [
+            "weapon"
+          ],
+          "breakForce": 12000
+        },
+        {
+          "id": "armor_front",
+          "position": [
+            0,
+            0.02,
+            -0.42
+          ],
+          "accepts": [
+            "armor"
+          ],
+          "breakForce": 2500
+        },
+        {
+          "id": "armor_left",
+          "position": [
+            -0.32,
+            0.02,
+            0
+          ],
+          "accepts": [
+            "armor"
+          ],
+          "breakForce": 2500
+        },
+        {
+          "id": "armor_right",
+          "position": [
+            0.32,
+            0.02,
+            0
+          ],
+          "accepts": [
+            "armor"
+          ],
+          "breakForce": 2500
+        },
+        {
+          "id": "armor_rear",
+          "position": [
+            0,
+            0.02,
+            0.42
+          ],
+          "accepts": [
+            "armor"
+          ],
+          "breakForce": 2500
+        },
+        {
+          "id": "motor_bay",
+          "position": [
+            0,
+            -0.02,
+            0.2
+          ],
+          "accepts": [
+            "motor"
+          ],
+          "breakForce": 9000
+        }
+      ],
+      "stats": {
+        "note": "Front geometry does the work; a wedge wins on shape, not on an actuator (T-4.4)."
+      }
+    },
+    "mt-balanced": {
+      "id": "mt-balanced",
+      "category": "motor",
+      "displayName": "Balanced Drive",
+      "mass": 9,
+      "hp": 80,
+      "cost": 140,
+      "mesh": null,
+      "primitive": "box",
+      "visualScale": [
+        0.22,
+        0.13,
+        0.26
+      ],
+      "requiresSocketType": "motor",
+      "colliderSpec": {
+        "shape": "box",
+        "halfExtents": [
+          0.11,
+          0.065,
+          0.13
+        ],
+        "friction": 0.4,
+        "restitution": 0
+      },
+      "stats": {
+        "driveForceMultiplier": 1,
+        "turnTorqueMultiplier": 1,
+        "maxSpeedMultiplier": 1
+      }
+    },
+    "mt-speed": {
+      "id": "mt-speed",
+      "category": "motor",
+      "displayName": "Sprint Drive",
+      "mass": 7,
+      "hp": 70,
+      "cost": 130,
+      "mesh": null,
+      "primitive": "box",
+      "visualScale": [
+        0.2,
+        0.12,
+        0.24
+      ],
+      "requiresSocketType": "motor",
+      "colliderSpec": {
+        "shape": "box",
+        "halfExtents": [
+          0.1,
+          0.06,
+          0.12
+        ],
+        "friction": 0.4,
+        "restitution": 0
+      },
+      "stats": {
+        "driveForceMultiplier": 1.25,
+        "turnTorqueMultiplier": 0.85,
+        "maxSpeedMultiplier": 1.3
+      }
+    },
+    "mt-torque": {
+      "id": "mt-torque",
+      "category": "motor",
+      "displayName": "Grinder Drive",
+      "mass": 12,
+      "hp": 90,
+      "cost": 150,
+      "mesh": null,
+      "primitive": "box",
+      "visualScale": [
+        0.24,
+        0.14,
+        0.28
+      ],
+      "requiresSocketType": "motor",
+      "colliderSpec": {
+        "shape": "box",
+        "halfExtents": [
+          0.12,
+          0.07,
+          0.14
+        ],
+        "friction": 0.4,
+        "restitution": 0
+      },
+      "stats": {
+        "driveForceMultiplier": 0.85,
+        "turnTorqueMultiplier": 1.35,
+        "maxSpeedMultiplier": 0.8
+      }
+    },
+    "wh-l": {
+      "id": "wh-l",
+      "category": "wheel",
+      "displayName": "Heavy Wheel",
+      "mass": 8,
+      "hp": 85,
+      "cost": 90,
+      "mesh": null,
+      "primitive": "sphere",
+      "visualScale": [
+        0.1,
+        0.3,
+        0.3
+      ],
+      "requiresSocketType": "wheel",
+      "colliderSpec": {
+        "shape": "sphere",
+        "radius": 0.15,
+        "friction": 0.7,
+        "restitution": 0
+      },
+      "stats": {
+        "driveScale": 1.15,
+        "gripScale": 1.1
+      }
+    },
+    "wh-m": {
+      "id": "wh-m",
+      "category": "wheel",
+      "displayName": "Standard Wheel",
+      "mass": 5,
+      "hp": 60,
+      "cost": 60,
+      "mesh": null,
+      "primitive": "sphere",
+      "visualScale": [
+        0.08,
+        0.24,
+        0.24
+      ],
+      "requiresSocketType": "wheel",
+      "colliderSpec": {
+        "shape": "sphere",
+        "radius": 0.12,
+        "friction": 0.6,
+        "restitution": 0
+      },
+      "stats": {
+        "driveScale": 1,
+        "gripScale": 1
+      }
+    },
+    "wh-s": {
+      "id": "wh-s",
+      "category": "wheel",
+      "displayName": "Light Wheel",
+      "mass": 3,
+      "hp": 40,
+      "cost": 40,
+      "mesh": null,
+      "primitive": "sphere",
+      "visualScale": [
+        0.07,
+        0.2,
+        0.2
+      ],
+      "requiresSocketType": "wheel",
+      "colliderSpec": {
+        "shape": "sphere",
+        "radius": 0.1,
+        "friction": 0.6,
+        "restitution": 0
+      },
+      "stats": {
+        "driveScale": 0.85,
+        "gripScale": 0.9
+      }
+    },
+    "wp-spinner-h": {
+      "id": "wp-spinner-h",
+      "category": "weapon",
+      "displayName": "Horizontal Spinner",
+      "mass": 18,
+      "hp": 150,
+      "cost": 300,
+      "mesh": null,
+      "primitive": "box",
+      "visualScale": [
+        0.7,
+        0.06,
+        0.12
+      ],
+      "requiresSocketType": "weapon",
+      "colliderSpec": {
+        "shape": "box",
+        "halfExtents": [
+          0.35,
+          0.03,
+          0.06
+        ],
+        "friction": 0.3,
+        "restitution": 0.1
+      },
+      "stats": {
+        "type": "spinnerHorizontal",
+        "axis": [
+          0,
+          1,
+          0
+        ],
+        "targetRpm": 1400,
+        "spinUpSeconds": 2.4,
+        "motorMaxForce": 900,
+        "energyLossPerHit": 0.35,
+        "jamThresholdRpm": 180
+      }
+    },
+    "wp-wedge-p": {
+      "id": "wp-wedge-p",
+      "category": "weapon",
+      "displayName": "Passive Wedge",
+      "mass": 10,
+      "hp": 180,
+      "cost": 120,
+      "mesh": null,
+      "primitive": "box",
+      "visualScale": [
+        0.58,
+        0.1,
+        0.3
+      ],
+      "requiresSocketType": "weapon",
+      "colliderSpec": {
+        "shape": "box",
+        "halfExtents": [
+          0.29,
+          0.05,
+          0.15
+        ],
+        "friction": 0.35,
+        "restitution": 0
+      },
+      "stats": {
+        "type": "wedge",
+        "note": "No actuator - geometry only (T-4.4)."
+      }
+    }
+  },
+  "bots": {
+    "opp-brick": {
+      "name": "Anvil",
+      "chassisId": "ch-brick-h",
+      "paint": {
+        "primary": "#8a2f2f",
+        "secondary": "#3a3a3f"
+      },
+      "attachments": [
+        {
+          "socketId": "wheel_fl",
+          "partId": "wh-l"
+        },
+        {
+          "socketId": "wheel_fr",
+          "partId": "wh-l"
+        },
+        {
+          "socketId": "wheel_rl",
+          "partId": "wh-l"
+        },
+        {
+          "socketId": "wheel_rr",
+          "partId": "wh-l"
+        },
+        {
+          "socketId": "armor_front",
+          "partId": "ar-heavy"
+        },
+        {
+          "socketId": "armor_left",
+          "partId": "ar-med"
+        },
+        {
+          "socketId": "armor_right",
+          "partId": "ar-med"
+        },
+        {
+          "socketId": "motor_bay",
+          "partId": "mt-torque"
+        }
+      ],
+      "derived": {
+        "totalMassKg": 168,
+        "weightClass": "heavy",
+        "armorTotal": 480,
+        "weaponRating": 0
+      }
+    },
+    "opp-wedge": {
+      "name": "Doorstop",
+      "chassisId": "ch-wedge-m",
+      "paint": {
+        "primary": "#d8a021",
+        "secondary": "#22222a"
+      },
+      "attachments": [
+        {
+          "socketId": "wheel_fl",
+          "partId": "wh-m"
+        },
+        {
+          "socketId": "wheel_fr",
+          "partId": "wh-m"
+        },
+        {
+          "socketId": "wheel_rl",
+          "partId": "wh-m"
+        },
+        {
+          "socketId": "wheel_rr",
+          "partId": "wh-m"
+        },
+        {
+          "socketId": "weapon_top",
+          "partId": "wp-wedge-p"
+        },
+        {
+          "socketId": "armor_front",
+          "partId": "ar-med"
+        },
+        {
+          "socketId": "motor_bay",
+          "partId": "mt-speed"
+        }
+      ],
+      "derived": {
+        "totalMassKg": 89,
+        "weightClass": "middle",
+        "armorTotal": 140,
+        "weaponRating": 180
+      }
+    },
+    "player-slice": {
+      "name": "Blue Ruin",
+      "chassisId": "ch-box-m",
+      "paint": {
+        "primary": "#2d6cdf",
+        "secondary": "#ffcc33"
+      },
+      "attachments": [
+        {
+          "socketId": "wheel_fl",
+          "partId": "wh-m"
+        },
+        {
+          "socketId": "wheel_fr",
+          "partId": "wh-m"
+        },
+        {
+          "socketId": "wheel_rl",
+          "partId": "wh-m"
+        },
+        {
+          "socketId": "wheel_rr",
+          "partId": "wh-m"
+        },
+        {
+          "socketId": "weapon_top",
+          "partId": "wp-spinner-h"
+        },
+        {
+          "socketId": "armor_front",
+          "partId": "ar-light"
+        },
+        {
+          "socketId": "motor_bay",
+          "partId": "mt-balanced"
+        }
+      ],
+      "derived": {
+        "totalMassKg": 98,
+        "weightClass": "middle",
+        "armorTotal": 90,
+        "weaponRating": 150
+      }
+    }
+  },
+  "damage": {
+    "$comment": "damage = clamp(impactEnergyJ * weaponFactor * (1 - armorReduction)) * scale, floored.",
+    "damageFloorJ": 150,
+    "damageScaleHpPerJ": 0.02,
+    "weaponFactor": {
+      "spinnerHorizontal": 1,
+      "drumVertical": 0.9,
+      "hammer": 1.3,
+      "flipper": 0.3,
+      "wedge": 0.15
+    },
+    "armorReduction": {
+      "none": 0,
+      "light": 0.15,
+      "medium": 0.3,
+      "heavy": 0.45
+    },
+    "damagedAtHpFraction": 0.5,
+    "damagedBreakForceMultiplier": 0.5,
+    "damagedDriveTorqueMultiplier": 0.55,
+    "damagedWeaponRpmMultiplier": 0.6,
+    "contactForceEventThresholdN": 400
+  },
+  "weightClasses": {
+    "$comment": "1 unit = 1 m, 1 mass unit = 1 kg. Mass is the sum of every PartDef.mass in a blueprint.",
+    "socketGridM": 0.02,
+    "classes": [
+      {
+        "id": "light",
+        "displayName": "Lightweight",
+        "maxMassKg": 60
+      },
+      {
+        "id": "middle",
+        "displayName": "Middleweight",
+        "maxMassKg": 110
+      },
+      {
+        "id": "heavy",
+        "displayName": "Heavyweight",
+        "maxMassKg": 180
+      }
+    ]
+  },
+  "inputMap": {
+    "$comment": "Action -> KeyboardEvent.code bindings. Applied with input.mapAction. P2 + gamepad land in T-6.6.",
+    "player1": {
+      "drive.forward": [
+        "KeyW",
+        "ArrowUp"
+      ],
+      "drive.back": [
+        "KeyS",
+        "ArrowDown"
+      ],
+      "turn.left": [
+        "KeyA",
+        "ArrowLeft"
+      ],
+      "turn.right": [
+        "KeyD",
+        "ArrowRight"
+      ],
+      "weapon.primary": [
+        "Space"
+      ],
+      "weapon.secondary": [
+        "ShiftLeft"
+      ],
+      "bot.selfRight": [
+        "KeyR"
+      ],
+      "ui.pause": [
+        "Escape"
+      ]
+    }
+  }
+}

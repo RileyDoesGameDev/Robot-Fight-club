@@ -41,8 +41,12 @@ Per the standing convention that every **(V)** task gets a number, a screenshot,
 - a saved blueprint round-tripped through save → load → assemble, producing an identical entity tree (T-2.11)
 - `profiler_getErrors` empty across a complete match
 
-## Status at end of week 1
+## Status
 
-Done: arena blockout with colliders and lighting, greybox bot, tank drive with measured feel, self-right (implemented, needs real geometry to validate), input map, part/blueprint data model with a consistency validator, physics-budget baseline.
+**Week 1 (done):** arena blockout with colliders and lighting, greybox bot, tank drive with measured feel, self-right (implemented, needs real geometry to validate), input map, part/blueprint data model with a consistency validator, physics-budget baseline.
 
-Not started: Workshop scene and UI, the assembler, the damage system, the weapon controller, the AI opponent. Those are the slice.
+**Week 2 so far (done):** the **assembler** (T-2.9) — a `BotBlueprint` becomes a live bot, one breakable rigid body per part, driven by spawner markers. Determinism verified (T-2.11). `Arena01` is spawner-driven: both bots build themselves on load and the player bot drives, with tuning carrying over unchanged from the greybox. Two-bot physics cost measured at 0.135 ms/step, which answers T-6.10 early.
+
+**Remaining for the gate:** the Workshop scene and UI (T-2.12 – T-2.18), blueprint→live round-trip (T-2.10), the damage system (T-3.1 – T-3.8), the spinner weapon controller (T-3.9), and the scripted AI opponent (T-3.13). Those are the slice.
+
+Steps 1 and 2 of the pass criteria are partly satisfied already: a blueprint does become a driveable bot in the arena. What is missing is the player being able to *author* that blueprint (step 1 proper) and anything happening when bots collide (step 3).

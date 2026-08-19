@@ -26,3 +26,6 @@ desktop.ini
 # Local-only environment
 .env
 .env.local
+
+# Transport-only artifact of build-bundle.js; bundle.json is the committed form.
+game/data/bundle.min.json

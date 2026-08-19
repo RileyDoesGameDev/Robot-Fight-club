@@ -6,9 +6,12 @@ and weapons jam.
 
 Solo project · 8-week window · feature-complete target: end of week 6.
 
-**Status: week 1 complete.** Arena blocked out, greybox bot driving with measured handling, part/blueprint
-data model in place. The Workshop, damage system, weapon controller and AI opponent are next — see
-[docs/VERTICAL-SLICE.md](docs/VERTICAL-SLICE.md) for the week 2–3 gate.
+**Status: week 1 complete, week 2 underway.** The arena is blocked out and the **assembler works** — a
+`BotBlueprint` becomes a live bot with one breakable rigid body per part, verified deterministic. Two bots
+now build themselves on scene load and drive. Next: the Workshop scene and UI, then the damage system —
+see [docs/VERTICAL-SLICE.md](docs/VERTICAL-SLICE.md) for the week 2–3 gate.
+
+![Two assembled bots facing off in Arena01](docs/images/assembled-bots.png)
 
 | Document | What it is |
 |---|---|
@@ -42,8 +45,8 @@ Nothing in the browser is backed up.
 
 ```
 game/
-  scenes/     Arena01 (built) + MainMenu, Workshop, DemoCenter, PostMatch (placeholders)
-  scripts/    gameplay behaviours — BotDrive.ts
+  scenes/     Arena01 (spawner-driven) + MainMenu, Workshop, DemoCenter, PostMatch (placeholders)
+  scripts/    gameplay behaviours — BotDrive.ts, BotAssembler.ts
   data/
     parts/            14 PartDefs (chassis, wheels, weapons, armor, motors)
     bots/             seed BotBlueprints — player-slice, opp-wedge, opp-brick
@@ -51,7 +54,21 @@ game/
     damage.json       damage-model constants (T-3.3)
     weight-classes.json, input-map.json
     validate.js       data consistency check
+    build-bundle.js   packs the above into bundle.json for the engine
+    bundle.json       GENERATED — do not hand-edit
 docs/         design doc, vertical slice, engine notes, screenshots
+```
+
+`Arena01` holds no baked bots. It contains two **spawner markers** whose `Name` encodes the blueprint
+(`BotSpawn:player-slice:player`); `BotAssembler` builds the bots on load, taking an 18-entity scene to 36
+live entities. See [docs/DESIGN.md](docs/DESIGN.md) §3.
+
+After changing anything under `game/data/`, rebuild the bundle and push it to the engine project:
+
+```sh
+node game/data/validate.js        # check consistency first
+node game/data/build-bundle.js    # regenerate bundle.json
+# then write bundle.json to the engine project at /data/bundle.json
 ```
 
 ---

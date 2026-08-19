@@ -55,6 +55,56 @@ A part's **body entity keeps `Transform.scale = [1,1,1]`**; its visual size live
 
 Why: `Transform.scale` is inherited by children, so a non-uniform scale on the chassis body (e.g. `[0.6, 0.25, 0.8]`) would distort every socket child's offset. Colliders are unaffected either way — `Collider.halfExtents` is passed to Rapier raw and **ignores `Transform.scale`** — so the visual and the collider must be sized independently and kept in agreement by hand. This bit the week-1 greybox and is why `Bot_Player_Chassis` carries the collider while `Bot_Player_ChassisVisual` carries the box.
 
+
+### The assembler (T-2.9)
+
+`game/scripts/BotAssembler.ts` turns a `BotBlueprint` into a live bot. It is driven by **spawner
+markers**: an empty entity whose Transform is the spawn pose and whose `Name` encodes the parameters.
+
+```
+BotSpawn:<blueprintId>:<role>      →  BotSpawn:player-slice:player
+```
+
+`Name` is the parameter channel because `script.attach` accepts no per-instance arguments and the ECS has
+no generic key/value component. On success the marker renames itself to `BotSpawned:…`, which makes
+assembly **idempotent** — loading a scene that already contains a baked bot will not duplicate it.
+
+`Arena01` therefore ships as a **spawner-driven scene**: 18 authored entities, no baked bots. Loading it
+produces 36 entities as the two bots build themselves. The arena is not welded to two specific blueprints,
+which is what lets the Workshop hand any saved blueprint to any scene.
+
+Structure produced per bot:
+
+```
+Bot_<role>_Chassis              unit-scaled body — Collider + RigidBody + controller Script
+  Bot_<role>_ChassisVisual      child holding the non-uniform visual scale
+Bot_<role>_<socket>_<partId>    one dynamic body per part, on a BREAKABLE joint
+```
+
+Every part is its own rigid body so it can be damaged and sheared off. Part bodies carry their visual
+directly — they have no children, so a non-uniform scale is safe there, unlike on the chassis. The
+`partId` is encoded in the entity name so the damage system can recover a part's hp and armour tier from
+the bundle without a component to store them in.
+
+A powered spinner is attached by a **revolute** joint carrying a velocity motor at `targetVelocity: 0`
+(the weapon controller, T-3.9, ramps it); everything else is welded with a `fixed` joint. Either kind is
+breakable, so detachment works uniformly.
+
+**Deviation: no prefabs (T-2.5 – T-2.8 superseded).** T-2.4 made the PartDef JSON the single source of
+truth for sockets. Authoring prefabs as well would duplicate every mass, collider and socket in a second
+place that must be regenerated whenever the JSON changes. The assembler builds entities directly from the
+data instead.
+
+**Data delivery.** `game/data/**` is the source of truth, but a script inside the engine would need one
+`project.readFile` per part to consume it. `game/data/build-bundle.js` packs everything into
+`bundle.json`, which is pushed to the engine project at `/data/bundle.json` and read in one call. The
+bundle is a generated artifact — never hand-edit it.
+
+**Verified (T-2.11):** assembling the same blueprint twice produces byte-identical structural signatures
+(masses, collider shapes, joint kinds, anchors, break forces), and every joint anchor exactly equals its
+authored socket position. Assembled mass matches the blueprint's declared mass exactly — 98 kg for
+`player-slice`, 89 kg for `opp-wedge`.
+
 ---
 
 ## 4. Drivetrain (T-1.7 decision)
@@ -147,9 +197,24 @@ A force-break is **runtime state, not an edit** — the authored joint returns o
 
 ## 7. Performance budget (T-1.17)
 
-**Measured:** one bot (5 dynamic bodies, 4 joints) plus the full arena costs **0.055 ms per fixed step** — about **300× headroom** inside a 16.67 ms frame at 60 Hz.
+**Measured:**
 
-This is stepping cost in isolation and excludes rendering, so it is a ceiling on the physics side only. Even so, risk **R1** ("physics budget can't carry 2 bots + debris") is far less threatening than the proposal assumed: two full bots plus generous debris is nowhere near the limit. Debris caps (T-5.3) remain worth having, but as a rendering and readability measure rather than a solver rescue.
+| Scene | Bodies | Joints | ms / fixed step | Headroom at 60 Hz |
+|---|---|---|---|---|
+| Greybox bot + arena | 5 | 4 | 0.055 | ~300x |
+| Two assembled bots + arena | 16 | 14 | 0.135 | ~124x |
+
+This is stepping cost in isolation and excludes rendering, so it is a ceiling on the physics side only. Scaling is mildly superlinear (bot-vs-bot contacts), but risk **R1** ("physics budget can't carry 2 bots + debris") is far less threatening than the proposal assumed — the two-bot case that T-6.10 exists to verify already runs with two orders of magnitude to spare. Debris caps (T-5.3) remain worth having, but as a rendering and readability measure rather than a solver rescue.
+
+### Assembled-bot drive feel
+
+The week-1 tuning transfers essentially unchanged from the 90 kg greybox to the 98 kg assembled bot, which is the useful result — the constants are not knife-edge:
+
+| | Greybox (90 kg) | Assembled `player-slice` (98 kg) |
+|---|---|---|
+| Top speed | 4.53 m/s | **4.46 m/s** |
+| Peak yaw | 2.33 rad/s (133 deg/s) | **2.28 rad/s (130 deg/s)** |
+| Upright after a full-speed run | yes | yes (up.y = 1.000) |
 
 ---
 
