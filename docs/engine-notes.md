@@ -39,6 +39,13 @@ tools exist in-process and are reachable from scripts — just not from an exter
 
 **Therefore: all game physics reads and writes happen from scripts.** There is no bridge fallback.
 
+**But they are registered lazily.** The physics provider only exists once physics has been initialised
+(§6), so before the first play-mode enable `engine.mcp.hasTool("physics.bodyState")` is `false` and
+`callTool` rejects with `unknown MCP tool: physics.bodyState`. A gameplay script that starts before
+physics is up will throw once per frame. This is what produced 124 buffered `unhandled rejection` errors
+during week 1 — historical, and zero recur with the current script, but worth recognising: that error
+message means "physics is not up yet", not "you typed the name wrong".
+
 ## 3. Reaching physics synchronously from a script
 
 `engine.mcp.callTool` is **async**. Awaiting it inside `onFixedUpdate` is not an option (the hook is
@@ -91,8 +98,9 @@ visual and its non-uniform scale.
 
 ## 6. Physics only initialises after play mode has been on once
 
-In edit mode `physics.bodyState` returns `null` for every entity and no Rapier bodies exist. The editor
-wires `ensurePhysics: () => setRunning(true)` (`packages/editor/src/engine/runtime.ts`).
+Until play mode has been enabled once, no Rapier bodies exist **and the `physics.*` tools are not even
+registered** (§2). The editor wires `ensurePhysics: () => setRunning(true)`
+(`packages/editor/src/engine/runtime.ts`), so enabling play mode is what brings both into being.
 
 For reproducible measurement: `editor.setRunning(true)` once to initialise, then
 `editor.setRunning(false)`, then drive time with `engine.stepFrames`. In edit mode `stepFrames` is the
