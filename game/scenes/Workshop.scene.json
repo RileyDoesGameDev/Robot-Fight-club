@@ -34,15 +34,15 @@
       "components": {
         "Transform": {
           "position": [
-            5,
-            4,
-            6
+            0,
+            1.4,
+            4.2
           ],
           "rotation": [
-            -0.198,
-            0.295,
-            0.063,
-            0.932
+            -0.1111,
+            0,
+            0,
+            0.9938
           ],
           "scale": [
             1,
@@ -52,12 +52,12 @@
         },
         "Camera": {
           "fov": 50,
-          "near": 0.1,
-          "far": 1000,
+          "near": 0.05,
+          "far": 100,
           "active": true
         },
         "Name": {
-          "value": "Main Camera"
+          "value": "WorkshopCamera"
         }
       }
     },
@@ -67,15 +67,15 @@
       "components": {
         "Transform": {
           "position": [
-            4,
-            6,
-            3
+            3,
+            5,
+            4
           ],
           "rotation": [
-            -0.383,
-            0,
-            0,
-            0.924
+            -0.3536,
+            0.1464,
+            0.0554,
+            0.9227
           ],
           "scale": [
             1,
@@ -85,12 +85,501 @@
         },
         "Light": {
           "type": "directional",
-          "color": 16777215,
-          "intensity": 1.2,
+          "color": 16777200,
+          "intensity": 2.2,
+          "castShadow": true
+        },
+        "Name": {
+          "value": "WorkshopKeyLight"
+        }
+      }
+    },
+    {
+      "id": 99,
+      "parent": 9,
+      "components": {
+        "Transform": {
+          "position": [
+            0,
+            3,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "Light": {
+          "type": "ambient",
+          "color": 11583696,
+          "intensity": 0.85,
           "castShadow": false
         },
         "Name": {
-          "value": "Directional Light"
+          "value": "WorkshopFill"
+        }
+      }
+    },
+    {
+      "id": 100,
+      "parent": 9,
+      "components": {
+        "Transform": {
+          "position": [
+            0,
+            -0.2,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            14,
+            0.4,
+            14
+          ]
+        },
+        "MeshRenderer": {
+          "meshId": null,
+          "primitive": "box",
+          "materialId": null,
+          "color": 1974813,
+          "textureId": null,
+          "visible": true,
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        "Name": {
+          "value": "Workshop_Floor"
+        },
+        "RigidBody": {
+          "type": "fixed",
+          "mass": null,
+          "linearDamping": 0,
+          "angularDamping": 0,
+          "gravityScale": 1,
+          "ccdEnabled": false,
+          "dominanceGroup": 0,
+          "canSleep": true,
+          "massProperties": null
+        },
+        "Collider": {
+          "shape": "box",
+          "halfExtents": [
+            7,
+            0.2,
+            7
+          ],
+          "radius": 0.5,
+          "halfHeight": 0.5,
+          "meshId": null,
+          "meshScale": [
+            1,
+            1,
+            1
+          ],
+          "offsetPosition": [
+            0,
+            0,
+            0
+          ],
+          "offsetRotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "extraShapes": null,
+          "restitution": 0,
+          "friction": 0.9,
+          "density": 1,
+          "isSensor": false,
+          "collisionGroups": {
+            "membership": 65535,
+            "filter": 65535
+          },
+          "contactForceEventThreshold": 0
+        }
+      }
+    },
+    {
+      "id": 101,
+      "parent": 9,
+      "components": {
+        "Transform": {
+          "position": [
+            0,
+            0.06,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            3.2,
+            0.12,
+            3.2
+          ]
+        },
+        "MeshRenderer": {
+          "meshId": null,
+          "primitive": "box",
+          "materialId": null,
+          "color": 2764848,
+          "textureId": null,
+          "visible": true,
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        "Name": {
+          "value": "Workshop_Turntable"
+        },
+        "RigidBody": {
+          "type": "fixed",
+          "mass": null,
+          "linearDamping": 0,
+          "angularDamping": 0,
+          "gravityScale": 1,
+          "ccdEnabled": false,
+          "dominanceGroup": 0,
+          "canSleep": true,
+          "massProperties": null
+        },
+        "Collider": {
+          "shape": "box",
+          "halfExtents": [
+            1.6,
+            0.06,
+            1.6
+          ],
+          "radius": 1.6,
+          "halfHeight": 0.06,
+          "meshId": null,
+          "meshScale": [
+            1,
+            1,
+            1
+          ],
+          "offsetPosition": [
+            0,
+            0,
+            0
+          ],
+          "offsetRotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "extraShapes": null,
+          "restitution": 0,
+          "friction": 0.9,
+          "density": 1,
+          "isSensor": false,
+          "collisionGroups": {
+            "membership": 65535,
+            "filter": 65535
+          },
+          "contactForceEventThreshold": 0
+        }
+      }
+    },
+    {
+      "id": 102,
+      "parent": 9,
+      "components": {
+        "Transform": {
+          "position": [
+            0,
+            1.6,
+            -4.5
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            12,
+            3.2,
+            0.3
+          ]
+        },
+        "MeshRenderer": {
+          "meshId": null,
+          "primitive": "box",
+          "materialId": null,
+          "color": 1381656,
+          "textureId": null,
+          "visible": true,
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        "Name": {
+          "value": "Workshop_Backdrop"
+        },
+        "RigidBody": {
+          "type": "fixed",
+          "mass": null,
+          "linearDamping": 0,
+          "angularDamping": 0,
+          "gravityScale": 1,
+          "ccdEnabled": false,
+          "dominanceGroup": 0,
+          "canSleep": true,
+          "massProperties": null
+        },
+        "Collider": {
+          "shape": "box",
+          "halfExtents": [
+            6,
+            1.6,
+            0.15
+          ],
+          "radius": 0.5,
+          "halfHeight": 0.5,
+          "meshId": null,
+          "meshScale": [
+            1,
+            1,
+            1
+          ],
+          "offsetPosition": [
+            0,
+            0,
+            0
+          ],
+          "offsetRotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "extraShapes": null,
+          "restitution": 0,
+          "friction": 0.5,
+          "density": 1,
+          "isSensor": false,
+          "collisionGroups": {
+            "membership": 65535,
+            "filter": 65535
+          },
+          "contactForceEventThreshold": 0
+        }
+      }
+    },
+    {
+      "id": 103,
+      "parent": 9,
+      "components": {
+        "Transform": {
+          "position": [
+            -3.4,
+            0.6,
+            -2.2
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1.6,
+            1.2,
+            0.5
+          ]
+        },
+        "MeshRenderer": {
+          "meshId": null,
+          "primitive": "box",
+          "materialId": null,
+          "color": 2500141,
+          "textureId": null,
+          "visible": true,
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        "Name": {
+          "value": "Workshop_Rack_L"
+        },
+        "RigidBody": {
+          "type": "fixed",
+          "mass": null,
+          "linearDamping": 0,
+          "angularDamping": 0,
+          "gravityScale": 1,
+          "ccdEnabled": false,
+          "dominanceGroup": 0,
+          "canSleep": true,
+          "massProperties": null
+        },
+        "Collider": {
+          "shape": "box",
+          "halfExtents": [
+            0.8,
+            0.6,
+            0.25
+          ],
+          "radius": 0.5,
+          "halfHeight": 0.5,
+          "meshId": null,
+          "meshScale": [
+            1,
+            1,
+            1
+          ],
+          "offsetPosition": [
+            0,
+            0,
+            0
+          ],
+          "offsetRotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "extraShapes": null,
+          "restitution": 0,
+          "friction": 0.6,
+          "density": 1,
+          "isSensor": false,
+          "collisionGroups": {
+            "membership": 65535,
+            "filter": 65535
+          },
+          "contactForceEventThreshold": 0
+        }
+      }
+    },
+    {
+      "id": 104,
+      "parent": 9,
+      "components": {
+        "Transform": {
+          "position": [
+            3.4,
+            0.6,
+            -2.2
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1.6,
+            1.2,
+            0.5
+          ]
+        },
+        "MeshRenderer": {
+          "meshId": null,
+          "primitive": "box",
+          "materialId": null,
+          "color": 2500141,
+          "textureId": null,
+          "visible": true,
+          "castShadow": true,
+          "receiveShadow": true
+        },
+        "Name": {
+          "value": "Workshop_Rack_R"
+        },
+        "RigidBody": {
+          "type": "fixed",
+          "mass": null,
+          "linearDamping": 0,
+          "angularDamping": 0,
+          "gravityScale": 1,
+          "ccdEnabled": false,
+          "dominanceGroup": 0,
+          "canSleep": true,
+          "massProperties": null
+        },
+        "Collider": {
+          "shape": "box",
+          "halfExtents": [
+            0.8,
+            0.6,
+            0.25
+          ],
+          "radius": 0.5,
+          "halfHeight": 0.5,
+          "meshId": null,
+          "meshScale": [
+            1,
+            1,
+            1
+          ],
+          "offsetPosition": [
+            0,
+            0,
+            0
+          ],
+          "offsetRotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "extraShapes": null,
+          "restitution": 0,
+          "friction": 0.6,
+          "density": 1,
+          "isSensor": false,
+          "collisionGroups": {
+            "membership": 65535,
+            "filter": 65535
+          },
+          "contactForceEventThreshold": 0
+        }
+      }
+    },
+    {
+      "id": 105,
+      "parent": 9,
+      "components": {
+        "Transform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "Name": {
+          "value": "Workshop"
+        },
+        "Script": {
+          "behavior": "WorkshopController",
+          "enabled": true
         }
       }
     }

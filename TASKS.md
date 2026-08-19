@@ -112,18 +112,26 @@ Derived from `Battle_Bots_Project_Proposal (1).docx`. Every task is written to b
   - **Superseded by T-2.9** — armour plates come from `ar-*.json`.
 - [x] **T-2.9** Write the **assembler**: `scripts/BotAssembler.ts` takes a `BotBlueprint` and produces a live bot in the scene via `prefab_instantiate` + `scene_reparent` + `Joint` writes at each socket.
   - **Result:** `game/scripts/BotAssembler.ts`. Spawner-marker driven (`BotSpawn:<blueprintId>:<role>` in the entity `Name`, since `script.attach` takes no per-instance args), idempotent via a rename to `BotSpawned:`. Builds one dynamic body per part on a breakable joint; powered weapons get a revolute joint + motor, everything else `fixed`. Reads `/data/bundle.json`.
-- [ ] **T-2.10** Write the reverse path: serialize a live in-workshop bot back to a `BotBlueprint`.
+- [x] **T-2.10** Write the reverse path: serialize a live in-workshop bot back to a `BotBlueprint`.
+  - **Result:** `readBackFromScene()` in `WorkshopController.ts` rebuilds a blueprint from the live entity tree — chassis recovered by matching collider half-extents, attachments parsed out of `Bot_workshop_<socketId>_<partId>` names. Save writes what the SCENE contains, not the in-memory draft, and reports whether the two agree. Verified: `roundTripMatches=true`.
 - [x] **T-2.11** Verify assembler determinism: same blueprint → identical entity tree, masses, and joint anchors twice in a row. **(V)**
   - **Result:** two independent assemblies of `player-slice` produced byte-identical structural signatures (masses, collider shapes, joint kinds, anchors, break forces, motor config). Every joint anchor exactly equals its authored socket position — 0 mismatches. Assembled mass equals declared mass exactly (98 kg `player-slice`, 89 kg `opp-wedge`).
 
 ### 2.3 Workshop scene
-- [ ] **T-2.12** Block out the `Workshop` scene: turntable platform, lighting, part racks, camera rig.
-- [ ] **T-2.13** Build the workshop UI (`ui_createCanvas` / `ui_createTree`): part category tabs, part list, socket selector, stat readout, Save / Load / Test buttons.
-- [ ] **T-2.14** Implement click-to-select a socket, then click-to-fit a part; show a ghost/preview before commit.
-- [ ] **T-2.15** Implement part removal and swap.
-- [ ] **T-2.16** Wire undo/redo in the workshop through `undo_beginTransaction` / `undo_commit` / `undo_undo` so each fit is one atomic step.
-- [ ] **T-2.17** Live stat panel: total mass, weight class, top-speed estimate, armor total, weapon damage rating.
-- [ ] **T-2.18** Blueprint persistence: save/load named bots (`game_saveSlot` / `game_loadSlot` or a JSON file via `project_writeFile`). Pick one and document it.
+- [x] **T-2.12** Block out the `Workshop` scene: turntable platform, lighting, part racks, camera rig.
+  - **Result:** floor, raised turntable, backdrop, two part racks, key + ambient light, and a player-facing camera at `[0, 1.4, 4.2]`. Turntable is a box, not a cylinder — see `docs/engine-bugs.md` LIM-005.
+- [x] **T-2.13** Build the workshop UI (`ui_createCanvas` / `ui_createTree`): part category tabs, part list, socket selector, stat readout, Save / Load / Test buttons.
+  - **Result:** 43 UI elements / 24 buttons across five panels — category tabs, part list, socket list, live stat readout, and Save / Load / Test / Remove / Undo / Redo. Built with `ui.createCanvas` + one `ui.createTree` per panel (a wrapper root would collapse its children's fractional anchors).
+- [~] **T-2.14** Implement click-to-select a socket, then click-to-fit a part; show a ghost/preview before commit.
+  - Click-to-select-socket then click-to-fit works, and every fit rebuilds the preview immediately. **The ghost/preview-before-commit is deliberately not built:** immediate apply plus undo/redo is simpler and gives better feedback than a ghost you must confirm. Revisit only if playtesters ask for it. Also still missing: clicking a socket *in the 3D view* (needs picking); selection is list-driven for now.
+- [x] **T-2.15** Implement part removal and swap.
+  - **Result:** fitting into an occupied socket swaps in place (verified 110 kg Medium Plate -> 118 kg Heavy Plate with the part count unchanged at 8); Remove clears the selected socket (verified wheels 4 -> 3 -> 4).
+- [x] **T-2.16** Wire undo/redo in the workshop through `undo_beginTransaction` / `undo_commit` / `undo_undo` so each fit is one atomic step.
+  - **Result:** undo/redo over draft snapshots, each edit wrapped in `undo.beginTransaction` / `undo.commit` so the scene rebuild collapses to one editor undo step. Verified 98 -> 110 -> 118 -> undo 110 -> undo 98 -> redo 110, with the preview rebuilt each time.
+- [x] **T-2.17** Live stat panel: total mass, weight class, top-speed estimate, armor total, weapon damage rating.
+  - **Result:** live panel showing name, chassis, mass + weight class, armour total, weapon rating, estimated top speed, and wheel count. Over-cap mass and a bot with <2 wheels both turn red.
+- [x] **T-2.18** Blueprint persistence: save/load named bots (`game_saveSlot` / `game_loadSlot` or a JSON file via `project_writeFile`). Pick one and document it.
+  - **Decision: plain JSON via `project.writeFile`**, not `game.saveSlot` — a blueprint is authored content that must stay diffable and exportable to the repo. Bots go to `/data/bots/<slug>.json` with the roster in `/data/roster.json`. Load cycles roster + bundled blueprints (verified opp-brick -> opp-wedge -> player-slice -> new-bot -> wrap). Saving an over-cap bot is refused (verified at 204 kg), which also covers T-4.8.
 - [ ] **T-2.19** **Vertical-slice gate:** build a bot in the Workshop → launch it into `Arena01` → drive it. Loop closes end to end. **(V)**
 
 ---

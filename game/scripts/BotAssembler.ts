@@ -88,7 +88,18 @@ function assemble(engine, blueprintId, role, pose) {
 
   const bundle = JSON.parse(readFile({ path: BUNDLE_PATH }).content.text);
   const parts = bundle.parts;
-  const blueprint = bundle.bots[blueprintId];
+  // Resolve from the bundle first, then fall back to a standalone blueprint file
+  // under /data/bots/. That fallback is what lets the Workshop preview an unsaved
+  // draft through this same assembler instead of duplicating assembly logic — the
+  // scripting layer has no imports, so duplication is the only alternative.
+  let blueprint = bundle.bots[blueprintId];
+  if (!blueprint) {
+    try {
+      blueprint = JSON.parse(readFile({ path: "/data/bots/" + blueprintId + ".json" }).content.text);
+    } catch (err) {
+      blueprint = null;
+    }
+  }
   if (!blueprint) throw new Error("unknown blueprint: " + blueprintId);
 
   const chassisDef = parts[blueprint.chassisId];

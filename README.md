@@ -6,10 +6,12 @@ and weapons jam.
 
 Solo project · 8-week window · feature-complete target: end of week 6.
 
-**Status: week 1 complete, week 2 underway.** The arena is blocked out and the **assembler works** — a
-`BotBlueprint` becomes a live bot with one breakable rigid body per part, verified deterministic. Two bots
-now build themselves on scene load and drive. Next: the Workshop scene and UI, then the damage system —
-see [docs/VERTICAL-SLICE.md](docs/VERTICAL-SLICE.md) for the week 2–3 gate.
+**Status: week 1 complete, week 2 nearly done.** The arena is blocked out, the **assembler works** (a
+`BotBlueprint` becomes a live bot with one breakable rigid body per part, verified deterministic), and the
+**Workshop is playable** — fit and swap parts across ten sockets, live mass/weight-class readout,
+undo/redo, save/load, and a preview bot that rebuilds on every edit. Next: the damage system, the spinner
+weapon controller, and the AI opponent — see [docs/VERTICAL-SLICE.md](docs/VERTICAL-SLICE.md) for the
+week 2–3 gate.
 
 ![Two assembled bots facing off in Arena01](docs/images/assembled-bots.png)
 
@@ -19,6 +21,7 @@ see [docs/VERTICAL-SLICE.md](docs/VERTICAL-SLICE.md) for the week 2–3 gate.
 | [docs/DESIGN.md](docs/DESIGN.md) | The design contract — units, weight classes, damage model, controls, measured numbers |
 | [docs/VERTICAL-SLICE.md](docs/VERTICAL-SLICE.md) | The one-page week 2–3 gate |
 | [docs/engine-notes.md](docs/engine-notes.md) | Engine gotchas that cost real time — **read before writing a gameplay script** |
+| [docs/engine-bugs.md](docs/engine-bugs.md) | Filable engine bugs & limitations hit while building this game |
 | [docs/smpl-engine-README.md](docs/smpl-engine-README.md) | Reference copy of the engine's own README |
 | `Battle_Bots_Project_Proposal (1).docx` | The original proposal |
 
@@ -45,8 +48,8 @@ Nothing in the browser is backed up.
 
 ```
 game/
-  scenes/     Arena01 (spawner-driven) + MainMenu, Workshop, DemoCenter, PostMatch (placeholders)
-  scripts/    gameplay behaviours — BotDrive.ts, BotAssembler.ts
+  scenes/     Arena01 + Workshop (both spawner-driven) + MainMenu, DemoCenter, PostMatch (placeholders)
+  scripts/    gameplay behaviours — BotDrive.ts, BotAssembler.ts, WorkshopController.ts
   data/
     parts/            14 PartDefs (chassis, wheels, weapons, armor, motors)
     bots/             seed BotBlueprints — player-slice, opp-wedge, opp-brick

@@ -47,6 +47,18 @@ Per the standing convention that every **(V)** task gets a number, a screenshot,
 
 **Week 2 so far (done):** the **assembler** (T-2.9) — a `BotBlueprint` becomes a live bot, one breakable rigid body per part, driven by spawner markers. Determinism verified (T-2.11). `Arena01` is spawner-driven: both bots build themselves on load and the player bot drives, with tuning carrying over unchanged from the greybox. Two-bot physics cost measured at 0.135 ms/step, which answers T-6.10 early.
 
-**Remaining for the gate:** the Workshop scene and UI (T-2.12 – T-2.18), blueprint→live round-trip (T-2.10), the damage system (T-3.1 – T-3.8), the spinner weapon controller (T-3.9), and the scripted AI opponent (T-3.13). Those are the slice.
+**Week 2, also done:** the **Workshop** (T-2.12 – T-2.18) — fit/swap/remove parts across ten sockets, live mass and weight-class readout, undo/redo, save/load with a roster, and an over-cap save guard. The preview bot rebuilds on every edit through the same assembler the arena uses. The reverse path (T-2.10) is real: Save serialises what the *scene* contains and confirms it matches the draft.
 
-Steps 1 and 2 of the pass criteria are partly satisfied already: a blueprint does become a driveable bot in the arena. What is missing is the player being able to *author* that blueprint (step 1 proper) and anything happening when bots collide (step 3).
+**Remaining for the gate:** the damage system (T-3.1 – T-3.8), the spinner weapon controller (T-3.9), the scripted AI opponent (T-3.13), the `DemoCenter` scene (T-3.15), and scene-to-scene hand-off so `Test` actually launches (T-6.2, currently it just publishes the blueprint).
+
+**Pass criteria progress**
+
+| Step | State |
+|---|---|
+| 1. Create — author a bot in the Workshop | ✅ works (in-editor; no standalone build yet) |
+| 2. Test — drive it | ⚠️ driving works in `Arena01`; `DemoCenter` and the scene hand-off do not exist |
+| 3. Destroy — damage, part loss, degradation | ❌ not started — the whole damage system |
+| 4. Resolve — knockout, post-match summary | ❌ not started |
+| 5. Repeat — clean second match | ❌ blocked on T-1.15 (joint restore on reset) |
+
+Step 3 is now the critical path, and it is the one that carries the project's actual pitch.

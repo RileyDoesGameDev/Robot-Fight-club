@@ -105,6 +105,53 @@ bundle is a generated artifact — never hand-edit it.
 authored socket position. Assembled mass matches the blueprint's declared mass exactly — 98 kg for
 `player-slice`, 89 kg for `opp-wedge`.
 
+### The Workshop (T-2.12 – T-2.18)
+
+`Workshop` is a 10-entity authored scene — floor, turntable, backdrop, two part racks, key + ambient
+light, player-facing camera, and one marker carrying `WorkshopController`. Loading it produces ~64 live
+entities as the UI and the preview bot build themselves.
+
+**Interaction.** Click a socket, then click a part. Fitting into an occupied socket swaps. `Remove` clears
+the selected socket. Every fit applies immediately and rebuilds the preview, so **the bot on the turntable
+*is* the preview** — there is no translucent ghost-before-commit. That is a deliberate deviation from
+T-2.14: an immediate, undoable apply is simpler and gives better feedback than a ghost you must confirm,
+with undo/redo as the safety net. Socket selection is list-driven; picking a socket by clicking it in the
+3D view needs a raycast picker and is still open.
+
+**UI.** Five panels grafted straight onto the canvas — category tabs + part list, socket list, live stats,
+a command bar, and a header hint line. There is no wrapper root element, because a wrapper would have to
+be full-bleed for its children's fractional anchors to resolve, and a full-bleed panel paints over the 3D
+view.
+
+**Live stats (T-2.17).** Name, chassis, mass + weight class, armour total, weapon rating, estimated top
+speed, wheel count. Over-cap mass and a bot with fewer than two wheels both turn red. The speed figure is
+an *estimate*: the measured 4.46 m/s reference scaled by the motor multiplier and inverse mass — not a
+simulation.
+
+**Undo/redo (T-2.16).** History is a stack of draft snapshots, and each edit is wrapped in
+`undo.beginTransaction` / `undo.commit` so the resulting scene rebuild collapses to a single editor undo
+step. Undoing the *draft* rather than the scene keeps the two from desynchronising.
+
+**Persistence (T-2.18 decision).** Blueprints are plain JSON at `/data/bots/<slug>.json`, with the roster
+at `/data/roster.json` — chosen over `game.saveSlot` because a blueprint is authored content that must
+stay diffable and exportable to the repo, not opaque save state. Saving an over-cap bot is refused, which
+also satisfies T-4.8.
+
+> **Sync gap worth knowing:** bots authored in the Workshop are written into the engine project, i.e. into
+> browser storage. Export them back to `game/data/bots/` before they count as saved.
+
+**Reverse path (T-2.10).** `Save` does not serialise the in-memory draft. It calls `readBackFromScene()`,
+which rebuilds the blueprint from the live entity tree — chassis identified by matching collider
+half-extents, attachments parsed out of `Bot_workshop_<socketId>_<partId>` names — and then reports
+whether that agrees with the draft. Verified `roundTripMatches=true`, so the scene is genuinely
+round-trippable rather than assumed to match.
+
+**Rebuild is a 3-frame state machine**, not by choice: deleting a `Script`-bearing entity from inside a
+script hook crashes the engine's frame loop (`engine-bugs.md` BUG-011). So the spawner marker is created
+once and never deleted; re-running it means disabling its Script on one frame and re-enabling it on the
+next, which makes ScriptSystem build a fresh instance and call `onStart` again. Only Script-free bodies are
+ever deleted.
+
 ---
 
 ## 4. Drivetrain (T-1.7 decision)
