@@ -30,12 +30,24 @@
  *   and for the CHASSIS the plate covering the face that was hit — see
  *   `armorReductionFor`.
  *
- * WHAT COUNTS AS A HIT (T-3.8)
- *   Only inter-bot pairs. Two parts of the same bot never damage each other, and
- *   arena geometry never damages anything — filtering by role is enough, so no
- *   collision-group masks are needed. Doing it in the damage system rather than
- *   with `Collider.collisionGroups` keeps the bots physically solid against the
- *   floor and each other, which masks would otherwise put at risk.
+ * WHAT COUNTS AS A HIT (T-3.8, T-5.12)
+ *   Inter-bot pairs, plus arena HAZARDS. Two parts of the same bot never damage
+ *   each other and ordinary arena geometry never damages anything — filtering by
+ *   role is enough, so no collision-group masks are needed. Doing it in the damage
+ *   system rather than with `Collider.collisionGroups` keeps the bots physically
+ *   solid against the floor and each other, which masks would otherwise put at risk.
+ *
+ *   A hazard is any entity named `Hazard_*`. It is registered under the reserved
+ *   role `$hazard`, so the existing same-role filter lets it through to every bot
+ *   and to no other hazard; it strikes with `weaponFactor.hazard` and can never be
+ *   struck back. That is the whole of "fold their damage rules into the damage
+ *   model" — a hazard is a striker with a factor, not a parallel system.
+ *
+ * THE PIT (T-5.12)
+ *   The arena's corner pits are real holes, not decoration. Anything whose body
+ *   falls below `pitKillY` is out: a chassis knocks its bot out with reason
+ *   `pitted`, and loose debris is deleted on the spot rather than free-falling
+ *   until its lifetime expires (measured at −28 m during the T-5.7 run).
  *
  * STATE STORAGE
  *   Health lives in this script's own Map, keyed by entity. There is no component
@@ -63,6 +75,14 @@ const DEBRIS_CAP = 8;
  * working. No free-fracture — a part either detaches whole or stays put.
  */
 const BREAKABLE = new Set(["wheel", "weapon", "armor"]);
+
+/**
+ * Reserved role for arena hazards (T-5.12). Not a bot, so it never appears in the
+ * `bots` registry, never gets drive params written to it and never wins or loses —
+ * but it is a role, so the same-role contact filter treats hazard-vs-bot as a real
+ * pair for free.
+ */
+const HAZARD_ROLE = "$hazard";
 
 /** Rotate vector v by quaternion q (x,y,z,w). */
 function rotate(q, v) {
@@ -153,7 +173,18 @@ export default function create() {
     const seen = new Set();
     for (const e of ents) {
       const n = nameOf(call, e);
-      if (!n || !/^Bot_/.test(n) || /Visual/.test(n)) continue;
+      if (!n || /Visual/.test(n)) continue;
+
+      if (/^Hazard_/.test(n)) {
+        seen.add(e);
+        if (parts.has(e)) continue;
+        parts.set(e, { role: HAZARD_ROLE, socketId: n.slice(7), partId: "hazard", category: "hazard",
+          hp: Infinity, maxHp: Infinity, state: "intact", armorTier: "none", isChassis: false,
+          isHazard: true, breakForce: 0 });
+        continue;
+      }
+
+      if (!/^Bot_/.test(n)) continue;
       seen.add(e);
       if (parts.has(e)) continue;
 
@@ -367,7 +398,8 @@ export default function create() {
     }
 
     engine.mcp.emit("battlebots.partState", {
-      entity, role: rec.role, socketId: rec.socketId, partId: rec.partId, state: next,
+      entity, role: rec.role, socketId: rec.socketId, partId: rec.partId,
+      category: rec.category, state: next,
     });
     engine.console.log("[Damage] " + rec.role + "/" + rec.socketId + " (" + rec.partId + ") -> " + next
       + (reason ? " [" + reason + "]" : ""));
@@ -428,6 +460,7 @@ export default function create() {
       offReport = engine.mcp.on("battlebots.requestReport", () => {
         const rows = [];
         for (const [ent, r] of parts) {
+          if (r.isHazard) continue;
           rows.push({ entity: ent, role: r.role, socket: r.socketId, part: r.partId,
             hp: Math.round(r.hp * 10) / 10, maxHp: r.maxHp, state: r.state });
         }
@@ -485,6 +518,27 @@ export default function create() {
         }
       }
 
+      // The pit (T-5.12). Cheap enough to poll every step: one bodyState per bot
+      // plus one per live debris piece, and it is the only thing standing between a
+      // bot that drove into a corner and a match that never ends.
+      for (const [role, bot] of bots) {
+        if (bot.knockedOut || !bot.chassis) continue;
+        const b = bodyStateOf(call, bot.chassis);
+        if (!b || !b.position || b.position.y >= dmg.pitKillY) continue;
+        bot.knockedOut = true;
+        engine.mcp.emit("battlebots.knockout", { role, reason: "pitted" });
+        engine.console.log("[Damage] KNOCKOUT " + role + " — pitted at y "
+          + Math.round(b.position.y * 100) / 100);
+      }
+      for (const ent of Array.from(debris.keys())) {
+        const b = bodyStateOf(call, ent);
+        if (!b || !b.position || b.position.y >= dmg.pitKillY) continue;
+        debris.delete(ent);
+        parts.delete(ent);
+        call("scene.deleteEntity", { entity: ent });
+        engine.mcp.emit("battlebots.debrisCulled", { entity: ent, reason: "pitted" });
+      }
+
       const res = call("physics.getContacts", {});
       if (!res || res.isError || !res.content) return;
 
@@ -500,6 +554,9 @@ export default function create() {
 
         const strike = (striker, victim, victimEntity, strikerEntity, point) => {
           if (victim.state === "destroyed") return;
+          // A hazard is scenery that bites. It cannot be worn down, and shearing a
+          // saw off the floor would be absurd.
+          if (victim.isHazard) return;
 
           // Force shear (T-5.1, T-5.5). `Joint.breakForce` is accepted and echoed
           // back by the engine but never evaluated, and `physics.jointBroken` never
@@ -513,7 +570,9 @@ export default function create() {
             return;
           }
           let factor = dmg.weaponFactor.ram;
-          if (striker.category === "weapon") {
+          if (striker.isHazard) {
+            factor = dmg.weaponFactor.hazard;
+          } else if (striker.category === "weapon") {
             const st = bundle.parts[striker.partId].stats || {};
             const f = st.type ? dmg.weaponFactor[st.type] : undefined;
             factor = typeof f === "number" ? f : dmg.weaponFactor.ram;
@@ -542,6 +601,7 @@ export default function create() {
               victim: victimEntity,
               role: striker.role,
               force,
+              point,
             });
           }
 

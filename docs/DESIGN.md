@@ -411,6 +411,56 @@ Progressive weakening (T-5.5): a `damaged` part's joint `breakForce` is multipli
 
 ---
 
+### Arena hazards (T-5.12)
+
+The corner pits were always real holes — Arena01 has no floor at |x| > 4 and |z| > 4 —
+but nothing watched them, so a bot that drove into one fell forever and the match
+never ended. Two rules close that:
+
+- **The pit is a kill zone.** A chassis below `pitKillY` (−0.9) knocks its bot out
+  with reason `pitted`; debris below it is deleted rather than left to free-fall.
+- **The pit is also the pushout zone.** The arena is walled on all four sides, so
+  there is no ring-out edge — the corners are where you shove someone to remove them.
+  `push-to-hazard` has been a scored AI action since T-5.16, against a rule that did
+  not exist until now.
+
+**Hazard damage is folded into the damage model, not parallel to it.** Any entity
+named `Hazard_*` registers under a reserved `$hazard` role, so the same-role contact
+filter that already separates bots lets a hazard through to every bot and to no other
+hazard. It strikes with `weaponFactor.hazard` and `strike` returns early when the
+victim is a hazard, so it can never be worn down. A hazard is a striker with a factor.
+
+The floor spinners' rotation is **cosmetic on purpose**: the body is static and the
+collider is a disc — the bar's swept envelope. That applies the tunnelling lesson
+below up front, and means contact behaviour does not depend on where the art points.
+
+| Property | Measured |
+|---|---|
+| Contacts, bot resting on a spinner | 514 over 2 s |
+| Median / peak contact force | 526 N / **7 626 N** |
+| Outcome | peak clears the 4 000 N wheel mount — **shears a wheel off** |
+| Other wheels, same 2 s | 0.3–3.1 hp attrition |
+
+### Telemetry (T-5.14) and weight suggestion (T-5.19)
+
+`MatchTelemetry` writes one JSON record per finished match to the engine project's
+`/telemetry`. It is a pure consumer of the `battlebots.*` channels, so gameplay
+cannot tell whether it is attached. **Both sides record decisions in one schema** —
+the AI's is its chosen action, the human's is the input being held — which is what
+makes a player trace and an AI trace comparable, and is the point of T-7.5.
+
+Recorded matches are **data, not source**: `game/telemetry/` is gitignored. To run
+the aggregator, export the folder out of the engine project first, then:
+
+```sh
+node game/data/ai/aggregate.js --dir game/telemetry --write
+```
+
+It is plain statistics — per personality, the lift of each action's sample share in
+wins over losses, suggested as a clamped delta on that action's `bias`. It never
+writes `weights.json`, and it declines to suggest anything below six matches per
+personality with at least one win and one loss.
+
 ### Weapons: the spinner (T-3.9)
 
 `game/scripts/WeaponController.ts`, attached by the assembler to any weapon whose

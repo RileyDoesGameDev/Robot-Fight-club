@@ -8,7 +8,8 @@
     "hammer": 1.3,
     "flipper": 0.3,
     "wedge": 0.15,
-    "ram": 0.5
+    "ram": 0.5,
+    "hazard": 1.2
   },
   "armorReduction": {
     "none": 0,
@@ -24,5 +25,6 @@
   "damagedArmorReductionMultiplier": 0.5,
   "armorCoverageDotMin": 0.35,
   "contactForceEventThresholdN": 400,
+  "pitKillY": -0.9,
   "debrisLifetimeSeconds": 12
 }

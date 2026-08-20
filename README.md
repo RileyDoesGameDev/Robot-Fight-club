@@ -54,14 +54,18 @@ Nothing in the browser is backed up.
 game/
   scenes/     Arena01, BotSelect, Workshop (all spawner-driven)
               MainMenu, DemoCenter, PostMatch still placeholders
-  scripts/    BotAssembler, BotDrive, DamageSystem, WeaponController, AiDriver,
-              BotSelectController, WorkshopController
+  scripts/    BotAssembler, BotDrive, DamageSystem, WeaponController, AiDriver, UtilityAi,
+              MatchDirector, BotSelectController, DemoCenterController, WorkshopController,
+              VfxDirector, HazardSpinner, MatchTelemetry
   data/
     parts/            14 PartDefs (chassis, wheels, weapons, armor, motors)
     bots/             6 prebuilt BotBlueprints + __selected.json (the persisted choice,
                       overwritten by Bot Select)
     schemas/          JSON Schema for PartDef and BotBlueprint
     damage.json       damage-model constants (T-3.3)
+    vfx.json          particle presets + post-FX (T-5.9 - T-5.13)
+    ai/weights.json   utility-AI weights and personalities (T-5.18)
+    ai/aggregate.js   recorded matches -> suggested weights (T-5.19)
     weight-classes.json, input-map.json
     validate.js       data consistency check
     build-bundle.js   packs the above into bundle.json for the engine

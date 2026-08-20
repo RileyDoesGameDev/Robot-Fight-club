@@ -299,14 +299,41 @@ Derived from `Battle_Bots_Project_Proposal (1).docx`. Every task is written to b
   - **Reloading the scene *is* the reset.** Part health lives in DamageSystem's own Map and force-broken joints are runtime state, so a fresh `project.loadScene` restores both with no bespoke teardown — Rematch is one call. Exercised back to back: a practice round, an opponent swap (which also reloads), and a full timed match, with `scene.validate` clean on cold boots of both scenes and no errors. An explicit assertion that every authored joint is back stays with T-1.15.
 
 ### 5.2 VFX & hazards
-- [ ] **T-5.9** Sparks on metal-on-metal impact (`vfx_createEmitter`, `vfx_burst`), scaled by impact force.
-- [ ] **T-5.10** Smoke from `damaged` parts; fire/heavy smoke from destroyed motors.
-- [ ] **T-5.11** Detachment burst VFX + debris dust.
-- [ ] **T-5.12** Arena hazards: pit/kill zone, saw blades or floor spinners, pushout zone. Fold their damage rules into the damage model.
-- [ ] **T-5.13** Post-processing pass (`renderer_setPostFx`) for impact punch — restrained, and off if it costs frames.
+- [x] **T-5.9** Sparks on metal-on-metal impact (`vfx_createEmitter`, `vfx_burst`), scaled by impact force.
+- [x] **T-5.10** Smoke from `damaged` parts; fire/heavy smoke from destroyed motors.
+- [x] **T-5.11** Detachment burst VFX + debris dust.
+  - All three live in `game/scripts/VfxDirector.ts`, one marker entity per fighting scene. It is a **pure consumer** of the `battlebots.*` channels DamageSystem already emitted — it queries nothing and writes to no bot, so detaching it changes no gameplay. Five presets in `game/data/vfx.json` (`sparks`, `smoke`, `fire`, `detach`, `dust`), tuning included, so the look needs no recompile.
+  - **`ParticleEmitter` is a component, so an entity carries at most one.** The presets are therefore swapped on a single entity rather than layered, ranked burst > sparks > smoke. The obvious alternative — spawning a short-lived entity at each `weaponHit.point` — was rejected as entity churn on the hot path at ~60 spawns per second of contact, the same cost T-5.3 caps debris to avoid. `worldSpace: true` throws particles off a spinning blade instead of letting them orbit with it.
+  - `weaponHit` gained a `point` field for this (it already had the contact point after T-5.4).
+  - **Measured** by driving the channels directly, since the director is a pure consumer: **(V)**
+
+    | Event | Result |
+    |---|---|
+    | `weaponHit` 900 N | +3 particles (`sparkMinCount`) |
+    | `weaponHit` 6 000 N | +22 particles (`sparkMaxCount`) — force-scaled |
+    | `weaponHit` repeated immediately | no burst — `sparkCooldownSeconds` held it |
+    | `partState` damaged | `smoke` preset on that part |
+    | `partState` destroyed + motor | `fire` preset, 29 live particles |
+    | `partDetached` | `detach` burst, then hands over to `dust` |
+- [x] **T-5.12** Arena hazards: pit/kill zone, saw blades or floor spinners, pushout zone. Fold their damage rules into the damage model.
+  - **The pit was decoration.** Arena01's four corners are real holes — there is no floor at |x| > 4 and |z| > 4 — but nothing watched them, so a bot that drove into one fell forever and the match never ended. DamageSystem now knocks out any bot whose chassis drops below `pitKillY` (−0.9) with reason `pitted`, and deletes debris that falls past it instead of letting it free-fall (the T-5.7 run caught a wheel at −28 m). Verified: `KNOCKOUT player — pitted at y −1.07`, and MatchDirector declared `winner=opponent (pitted)` off the existing channel with no changes. **(V)**
+  - **The pit IS the pushout zone.** The arena is walled on all four sides, so there is no ring-out edge; the corners are where you shove someone to remove them. `push-to-hazard` was already an AI action scored against `foeHazard`, so the AI has been trying to use this since T-5.16 against a rule that did not exist.
+  - **Floor spinners** (`Hazard_SpinnerW` / `E`, ±2.6 m, flanking the centre lane rather than sitting in it). Damage is **folded into the damage model, not parallel to it**: any entity named `Hazard_*` registers under a reserved `$hazard` role, so the existing same-role contact filter lets it through to every bot and to no other hazard. It strikes with `weaponFactor.hazard` (1.2) and `strike` returns early if the victim is a hazard, so it can never be worn down. A hazard is a striker with a factor — about fifteen lines, no new subsystem.
+  - Their rotation is **cosmetic on purpose**: the body is static and the collider is a disc, the bar's swept envelope. That is the T-3.11 lesson (a thin bar sweeping >0.2 m per fixed step tunnels, and the contacts that resolve are explosive) applied up front, and it means the hazard's contact behaviour does not depend on where the art is pointing.
+  - **Measured**, bot set down on a spinner at rest height so no drop impact confounds it: **514 contacts over 2 s, median 526 N, peak 7 626 N** — the peak clears the 4 000 N wheel mount, so it **sheared a wheel off**, while the other three took 0.3–3.1 hp of attrition. Sitting on it costs you a wheel; crossing it costs you paint. **(V)**
+- [x] **T-5.13** Post-processing pass (`renderer_setPostFx`) for impact punch — restrained, and off if it costs frames.
+  - ACES + bloom (strength 0.35, threshold 0.85, so it catches sparks and not much else) + a soft vignette + FXAA. SSAO and grain are **off** — both cost more than they add in a top-down greybox arena.
+  - **Measured free:** 16.685 ms frame time with it on and 16.685 ms with it off, at 69 entities. It stays on. **(V)**
+  - Post-FX is **renderer state, not scene state** — nothing in the repo would carry it into a build if it were only set from the editor. It therefore lives in `data/vfx.json` under `postFx` and is applied by VfxDirector at scene start, which makes it both reproducible from the repo and tunable without a recompile.
 
 ### 5.3 Utility AI opponent
-- [ ] **T-5.14** Add match telemetry recording: log player decisions and outcomes during play (`events_setRecording`, `simulation_setRecording`, or a custom log via `project_writeFile`). Must ship *before* the playtests that generate the tuning data — start this in week 3 if possible. **(R)**
+- [x] **T-5.14** Add match telemetry recording: log player decisions and outcomes during play (`events_setRecording`, `simulation_setRecording`, or a custom log via `project_writeFile`). Must ship *before* the playtests that generate the tuning data — start this in week 3 if possible. **(R)**
+  - **Risk R5 is closed.** `game/scripts/MatchTelemetry.ts`, one marker per fighting scene, writes one JSON record per finished match to `/telemetry/<scene>-<stamp>.json`.
+  - Custom log via `project.writeFile`, not `events_setRecording`: the engine's own recorders capture engine events, whereas the tuning questions are about *game* concepts — which action a personality chose, at what range, with what health, and whether it won. Those already existed as `battlebots.*` channels, so the recorder is another **pure consumer** and gameplay cannot tell whether it is attached.
+  - **Decisions are recorded identically for both sides**, which is the property T-7.5 needs: the AI's decision is its `aiAction`, and the human's is the input it was holding (`throttle`/`turn`/`spin`). One schema, so a player trace and an AI trace are directly comparable.
+  - Sampled at 2 Hz rather than logged per frame — every tuning question is distributional, and a 60 Hz log of a 120 s match is 7 200 rows per bot for no extra answer. One write at match end, never mid-match, so file IO never lands on the fixed step.
+  - **Verified** on a full timed Arena01 match: `wrote /telemetry/Arena01-91533-356.json — 356 samples, 16 events, 91.53 s`, result `winner=player, chassis-destroyed`, damage 280.9 vs 260.0, parts lost 2/1. Six further AI-vs-AI matches recorded across the roster; the corpus is 5 finished records, 286 KB. **(V)**
+  - `game/telemetry/` is **gitignored** — recorded matches are data, not source, and 286 KB of them accumulates fast. Export them out of the engine project before running the aggregator.
 - [x] **T-5.15** Define the utility-AI **considerations**: distance to opponent, weapon alignment, own health, opponent health, weapon spin-up state, hazard proximity, arena position.
   - Twelve, all normalised 0..1: `proximity`, `alignment`, `ownHealth`, `foeHealth`, `weaponSpin`, `bladeDown`, `weaponLost`, `hazardNear`, `wallNear`, `foeHazard`, `stuck`, `engaged`. The last three were **not** in the original list and were forced by testing — see the three modelling bugs in DESIGN.md section 5.
 - [x] **T-5.16** Define the **action set**: charge, circle-strafe, retreat, spin up, ram, fire weapon, self-right, push toward hazard.
@@ -315,7 +342,17 @@ Derived from `Battle_Bots_Project_Proposal (1).docx`. Every task is written to b
   - `game/scripts/UtilityAi.ts`. Score = bias + sum(weight * consideration), highest wins. Hysteresis is two mechanisms: `minDwellSeconds` (0.45) against sub-frame dithering, and `hysteresisBonus` (0.15) so an incumbent must be beaten clearly rather than narrowly. Knocked-out and flipped are gated rather than scored, and the pit is a veto (-2 to everything but retreat) — a weight file should not be able to price instant death as merely expensive.
 - [x] **T-5.18** Externalize the weights into `data/ai/weights.json` so tuning needs no recompile.
   - `game/data/ai/weights.json` — considerations documented inline, a `tuning` block (ranges, thresholds, hysteresis, dwell) and three personality weight sets. Bundled by `build-bundle.js`; UtilityAi reads the file directly, so a weight change needs no recompile. Every constant that mattered during tuning ended up here, including `engagedProximity` and `attackDwellSeconds`.
-- [ ] **T-5.19** Build the aggregation script: recorded match stats → suggested weights. Plain statistics, **not** ML (per the adopted proposal decision).
+- [x] **T-5.19** Build the aggregation script: recorded match stats → suggested weights. Plain statistics, **not** ML (per the adopted proposal decision).
+  - `game/data/ai/aggregate.js` — `node game/data/ai/aggregate.js [--dir game/telemetry] [--write]`. Counting and averaging only: no model, no gradient, no training. Per personality, per action, it compares the share of samples spent in that action in matches that bot **won** against matches it **lost**:
+
+    ```
+    lift(action) = mean(share | won) − mean(share | lost)
+    ```
+
+    and suggests that lift, scaled and clamped, as a delta on the action's `bias` — `bias` specifically, because it is the one unconditional term, so a nudge there means exactly "do this more often" without silently re-shaping *when* the action fires.
+  - **It never writes `weights.json`.** Output is a suggestion a human reads; `--write` puts it in `weights.suggested.json`, which the game does not load. A number from counting six matches has no business overwriting a number arrived at by watching the bot play.
+  - **It refuses to speak too soon.** Below `MIN_MATCHES` (6) per personality, with at least one win and one loss, it prints "insufficient data" rather than a confident-looking table. That is the whole defence against this task's failure mode — laundering noise into authority by formatting it.
+  - **Verified** on a synthetic corpus built to exercise the branches (real recorded matches live engine-side): aggressive over 6 matches (3W/3L) returned `ram` lift **+0.398**, `attack` **+0.136**, `circle-strafe` **−0.534`, each clamped to the ±0.25 per-pass limit; defensive with 1 match correctly declined. It also reports median range at commit against `tuning.engageRangeM`. **(V)**
 - [x] **T-5.20** Author 2–3 AI personalities (aggressive / defensive / opportunist) as distinct weight sets.
   - **aggressive** (trades hard, ignores its own health), **defensive** (will not commit without a blade at speed, disengages when hurt), **opportunist** (circles and punishes a weakened target — its attack weights on `foeHealth` are negative). Assigned per blueprint via `aiPersonality` so a bot's temperament is data: Hornet opportunist, Grinder and Anvil defensive, the rest aggressive.
 - [x] **T-5.21** Add an AI debug overlay showing live consideration values and the winning action — indispensable for tuning.
@@ -323,7 +360,16 @@ Derived from `Battle_Bots_Project_Proposal (1).docx`. Every task is written to b
 - [x] **T-5.22** Verify the AI is beatable but not trivial, and that it never gets stuck against a wall or in a corner. **(V)**
   - **Verified.** 30 s per personality, Ravager vs Ravager, sampled every 0.75 s: aggressive 17 switches (attack 9 / ram 9 / retreat 6), defensive 16 (attack 8 / charge 6 / circle 7 / spin-up 3), opportunist 13 (circle 11 / attack 7 / ram 6). Three distinct temperaments, none monotone, none stuck, 0 errors. Three separate stuck states were found and fixed getting here — grinding forever, orbiting forever, ramming forever — each a modelling error rather than a tuning miss (DESIGN.md section 5). Beatability against a *human* is still unmeasured; that needs T-5.14 telemetry plus a playtest.
   - **Partially addressed early by the scripted baseline:** `break-off` after 2.5 s of attacking, plus a stuck detector gated on commanded throttle, keep it from grinding forever or sitting wedged. Still to do: the beatable-but-not-trivial judgement, which needs the utility AI and real playtests.
-- [ ] **T-5.23** Run the AI in a Worker via the scripting layer's isolation if its main-thread cost shows up in `profiler_getFrameStats`.
+- [x] **T-5.23** Run the AI in a Worker via the scripting layer's isolation if its main-thread cost shows up in `profiler_getFrameStats`. **Measured; not needed.**
+  - The task is conditional and the condition is not met. Timing 600 fixed frames of a live two-bot match (`stepFrames` is synchronous, so wall time around a fixed frame count is a direct read on main-thread cost):
+
+    | Configuration | ms / frame |
+    |---|---|
+    | Everything on | 0.394, 0.245 on repeat |
+    | Utility AI disabled | 0.248 |
+    | VFX + telemetry disabled | 0.279 |
+
+  - The whole simulation costs **0.25–0.39 ms against a 16.67 ms budget** (~2 %), and the AI's share is **~0.15 ms — inside run-to-run noise**. Moving it to a Worker would add serialization and a frame of latency to buy back a fraction of a percent. Revisit only if local multiplayer with two AI bots plus debris changes the picture (T-6.10).
 
 ---
 

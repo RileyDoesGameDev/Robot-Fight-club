@@ -1252,6 +1252,311 @@
           "params": {}
         }
       }
+    },
+    {
+      "id": 1542,
+      "parent": 18,
+      "components": {
+        "Transform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "Name": {
+          "value": "VfxDirector"
+        },
+        "Script": {
+          "behavior": "VfxDirector",
+          "enabled": true,
+          "params": {}
+        }
+      }
+    },
+    {
+      "id": 1543,
+      "parent": 21,
+      "components": {
+        "Transform": {
+          "position": [
+            -2.6,
+            0.06,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "Name": {
+          "value": "Hazard_SpinnerW"
+        },
+        "RigidBody": {
+          "type": "fixed",
+          "mass": null,
+          "linearDamping": 0,
+          "angularDamping": 0,
+          "gravityScale": 1,
+          "ccdEnabled": false,
+          "dominanceGroup": 0,
+          "canSleep": true,
+          "massProperties": null
+        },
+        "Collider": {
+          "shape": "cylinder",
+          "halfExtents": [
+            0.7,
+            0.06,
+            0.7
+          ],
+          "radius": 0.7,
+          "halfHeight": 0.06,
+          "meshId": null,
+          "meshScale": [
+            1,
+            1,
+            1
+          ],
+          "offsetPosition": [
+            0,
+            0,
+            0
+          ],
+          "offsetRotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "extraShapes": null,
+          "restitution": 0,
+          "friction": 0.4,
+          "density": 1,
+          "isSensor": false,
+          "collisionGroups": {
+            "membership": 65535,
+            "filter": 65535
+          },
+          "contactForceEventThreshold": 400
+        },
+        "Script": {
+          "behavior": "HazardSpinner",
+          "enabled": true,
+          "params": {
+            "rpm": 150
+          }
+        }
+      }
+    },
+    {
+      "id": 1544,
+      "parent": 1543,
+      "components": {
+        "Transform": {
+          "position": [
+            0,
+            0.02,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1.36,
+            0.06,
+            0.16
+          ]
+        },
+        "Name": {
+          "value": "Hazard_SpinnerWVisual"
+        },
+        "MeshRenderer": {
+          "meshId": null,
+          "primitive": "box",
+          "materialId": null,
+          "color": 12729122,
+          "textureId": null,
+          "visible": true,
+          "castShadow": true,
+          "receiveShadow": true
+        }
+      }
+    },
+    {
+      "id": 1545,
+      "parent": 21,
+      "components": {
+        "Transform": {
+          "position": [
+            2.6,
+            0.06,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "Name": {
+          "value": "Hazard_SpinnerE"
+        },
+        "RigidBody": {
+          "type": "fixed",
+          "mass": null,
+          "linearDamping": 0,
+          "angularDamping": 0,
+          "gravityScale": 1,
+          "ccdEnabled": false,
+          "dominanceGroup": 0,
+          "canSleep": true,
+          "massProperties": null
+        },
+        "Collider": {
+          "shape": "cylinder",
+          "halfExtents": [
+            0.7,
+            0.06,
+            0.7
+          ],
+          "radius": 0.7,
+          "halfHeight": 0.06,
+          "meshId": null,
+          "meshScale": [
+            1,
+            1,
+            1
+          ],
+          "offsetPosition": [
+            0,
+            0,
+            0
+          ],
+          "offsetRotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "extraShapes": null,
+          "restitution": 0,
+          "friction": 0.4,
+          "density": 1,
+          "isSensor": false,
+          "collisionGroups": {
+            "membership": 65535,
+            "filter": 65535
+          },
+          "contactForceEventThreshold": 400
+        },
+        "Script": {
+          "behavior": "HazardSpinner",
+          "enabled": true,
+          "params": {
+            "rpm": 150
+          }
+        }
+      }
+    },
+    {
+      "id": 1546,
+      "parent": 1545,
+      "components": {
+        "Transform": {
+          "position": [
+            0,
+            0.02,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1.36,
+            0.06,
+            0.16
+          ]
+        },
+        "Name": {
+          "value": "Hazard_SpinnerEVisual"
+        },
+        "MeshRenderer": {
+          "meshId": null,
+          "primitive": "box",
+          "materialId": null,
+          "color": 12729122,
+          "textureId": null,
+          "visible": true,
+          "castShadow": true,
+          "receiveShadow": true
+        }
+      }
+    },
+    {
+      "id": 1547,
+      "parent": 18,
+      "components": {
+        "Transform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "Name": {
+          "value": "MatchTelemetry"
+        },
+        "Script": {
+          "behavior": "MatchTelemetry",
+          "enabled": true,
+          "params": {
+            "sceneName": "DemoCenter",
+            "sampleSeconds": 0.5
+          }
+        }
+      }
     }
   ]
 }

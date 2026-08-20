@@ -1,0 +1,115 @@
+{
+  "$comment": "Particle looks for the destruction pass (T-5.9 - T-5.11), read by scripts/VfxDirector.ts. Colours are 0xRRGGBB as integers. One entity carries at most one ParticleEmitter, so these are PRESETS the director swaps between on the same entity rather than layers it stacks: burst beats sparks beats smoke. Everything here is tuning, so it lives in data and needs no recompile.",
+
+  "sparks": {
+    "$comment": "Metal-on-metal, bursted on battlebots.weaponHit and scaled by contact force. worldSpace so they are thrown off the blade instead of riding it around.",
+    "enabled": true,
+    "rate": 0,
+    "lifetime": 0.35,
+    "maxParticles": 140,
+    "startColor": 16766848,
+    "endColor": 16724736,
+    "startSize": 0.05,
+    "endSize": 0.01,
+    "shape": "sphere",
+    "shapeRadius": 0.12,
+    "velocityMin": [-3.5, 0.5, -3.5],
+    "velocityMax": [3.5, 4.5, 3.5],
+    "gravity": [0, -9.81, 0],
+    "worldSpace": true
+  },
+
+  "smoke": {
+    "$comment": "A damaged part smoulders. Continuous and deliberately thin - this runs for the rest of the match on every damaged part, so the rate is a frame-budget decision as much as a look.",
+    "enabled": true,
+    "rate": 7,
+    "lifetime": 1.4,
+    "maxParticles": 40,
+    "startColor": 5592405,
+    "endColor": 2236962,
+    "startSize": 0.08,
+    "endSize": 0.3,
+    "shape": "sphere",
+    "shapeRadius": 0.08,
+    "velocityMin": [-0.25, 0.5, -0.25],
+    "velocityMax": [0.25, 1.1, 0.25],
+    "gravity": [0, 0.4, 0],
+    "worldSpace": true
+  },
+
+  "fire": {
+    "$comment": "A destroyed MOTOR. Motors are not breakable (T-5.6) so a dead one stays bolted in and burns where it sits - which is the point: it is the one destroyed part you can still see on the bot.",
+    "enabled": true,
+    "rate": 26,
+    "lifetime": 1.1,
+    "maxParticles": 90,
+    "startColor": 16746496,
+    "endColor": 3355443,
+    "startSize": 0.13,
+    "endSize": 0.42,
+    "shape": "sphere",
+    "shapeRadius": 0.1,
+    "velocityMin": [-0.4, 1.0, -0.4],
+    "velocityMax": [0.4, 2.4, 0.4],
+    "gravity": [0, 1.2, 0],
+    "worldSpace": true
+  },
+
+  "detach": {
+    "$comment": "One-shot on battlebots.partDetached - the moment a mount lets go. Bursts detachBurstCount, then the emitter is retuned to `dust` for the part's life as debris.",
+    "enabled": true,
+    "rate": 0,
+    "lifetime": 0.6,
+    "maxParticles": 120,
+    "startColor": 16777164,
+    "endColor": 8947848,
+    "startSize": 0.1,
+    "endSize": 0.02,
+    "shape": "sphere",
+    "shapeRadius": 0.2,
+    "velocityMin": [-4, 0.5, -4],
+    "velocityMax": [4, 5, 4],
+    "gravity": [0, -9.81, 0],
+    "worldSpace": true
+  },
+
+  "dust": {
+    "$comment": "What a detached part trails while it is still on the floor. Very thin - debris is capped at 8 pieces (T-5.3) and this is 8 emitters' worth.",
+    "enabled": true,
+    "rate": 4,
+    "lifetime": 0.9,
+    "maxParticles": 24,
+    "startColor": 10129274,
+    "endColor": 5000268,
+    "startSize": 0.06,
+    "endSize": 0.22,
+    "shape": "sphere",
+    "shapeRadius": 0.1,
+    "velocityMin": [-0.2, 0.1, -0.2],
+    "velocityMax": [0.2, 0.5, 0.2],
+    "gravity": [0, 0.2, 0],
+    "worldSpace": true
+  },
+
+  "postFx": {
+    "$comment": "T-5.13. Restrained on purpose: ACES + a little bloom on the sparks + a soft vignette to pull the eye to the middle of the arena. Measured free at 69 entities (16.685 ms frame time with it on and off), so it stays on. SSAO and grain are OFF - both cost more than they add in a top-down greybox arena.",
+    "enabled": true,
+    "tonemap": "aces",
+    "exposure": 1.05,
+    "bloom": { "enabled": true, "strength": 0.35, "radius": 0.5, "threshold": 0.85 },
+    "fxaa": { "enabled": true },
+    "vignette": { "enabled": true, "darkness": 0.55, "offset": 1.05 },
+    "ssao": { "enabled": false },
+    "grain": { "enabled": false }
+  },
+
+  "tuning": {
+    "$comment": "How the looks are driven. sparkMinForceN keeps resting contacts from sparking; the count ramps linearly to sparkMaxForceN and is clamped at sparkMaxCount.",
+    "sparkMinForceN": 800,
+    "sparkMaxForceN": 6000,
+    "sparkMinCount": 3,
+    "sparkMaxCount": 22,
+    "sparkCooldownSeconds": 0.07,
+    "detachBurstCount": 30
+  }
+}
