@@ -9,6 +9,14 @@
  *   Rejected: revolute wheel joints with velocity motors — four extra motorised
  *   constraints per bot, and drive feel coupled to joint stiffness.
  *
+ * WHO COMMANDS IT
+ *   `params.inputDriven: true` reads the keyboard — that is the human's bot.
+ *   Otherwise it reads `params.intent = { throttle, turn, selfRight }`, written by a
+ *   decision layer such as AiDriver. Keeping actuation here means the drive tuning
+ *   that was measured in week 1 lives in exactly one place; the AI supplies only
+ *   *what* to do, never *how*. That is the split T-3.13 asks for, so the week-5
+ *   Utility AI replaces the decision layer without touching this file.
+ *
  * DEGRADATION CHANNEL (T-3.6)
  *   `ctx.params.driveLeft` / `driveRight` (0..1) scale each track. DamageSystem
  *   writes them with `scene.setComponent` on this entity's Script component;
@@ -105,10 +113,21 @@ export default function create() {
       // Input collapses to left/right track throttle, then recombines into a
       // forward and a yaw component, so a future two-stick mapping and this
       // keyboard mapping drive the exact same code path.
-      const fwdAxis =
-        (input.actionHeld("drive.forward") ? 1 : 0) - (input.actionHeld("drive.back") ? 1 : 0);
-      const turnAxis =
-        (input.actionHeld("turn.right") ? 1 : 0) - (input.actionHeld("turn.left") ? 1 : 0);
+      const intent = params.intent && typeof params.intent === "object" ? params.intent : null;
+      const clamp1 = (v) => Math.max(-1, Math.min(1, typeof v === "number" ? v : 0));
+
+      let fwdAxis = 0;
+      let turnAxis = 0;
+      let wantSelfRight = false;
+      if (params.inputDriven === true) {
+        fwdAxis = (input.actionHeld("drive.forward") ? 1 : 0) - (input.actionHeld("drive.back") ? 1 : 0);
+        turnAxis = (input.actionHeld("turn.right") ? 1 : 0) - (input.actionHeld("turn.left") ? 1 : 0);
+        wantSelfRight = input.actionHeld("bot.selfRight");
+      } else if (intent) {
+        fwdAxis = clamp1(intent.throttle);
+        turnAxis = clamp1(intent.turn);
+        wantSelfRight = intent.selfRight === true;
+      }
 
       const scaleL = typeof params.driveLeft === "number" ? params.driveLeft : 1;
       const scaleR = typeof params.driveRight === "number" ? params.driveRight : 1;
@@ -143,7 +162,7 @@ export default function create() {
 
       // --- self-righting (T-1.12) ------------------------------------------
       if (selfRightTimer > 0) selfRightTimer -= dt;
-      if (!grounded && selfRightTimer <= 0 && input.actionHeld("bot.selfRight")) {
+      if (!grounded && selfRightTimer <= 0 && wantSelfRight) {
         selfRightTimer = SELF_RIGHT_COOLDOWN;
         call("physics.applyImpulse", { entity, impulse: { x: 0, y: SELF_RIGHT_IMPULSE, z: 0 } });
         // Roll about the chassis' own long axis so the kick has a direction.

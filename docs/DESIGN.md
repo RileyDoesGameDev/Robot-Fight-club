@@ -368,6 +368,57 @@ requirement on the AI (T-3.13), not a bug to damp out.
 
 ---
 
+### The opponent AI (T-3.13, T-3.14)
+
+`game/scripts/AiDriver.ts`. The assembler gives every non-player bot a **brain**:
+a child entity of the chassis carrying this script. It is a child because an entity
+holds only one `Script` and the chassis already carries `BotDrive`.
+
+**Decision layer only — this is the important structural choice.** AiDriver writes
+`intent = { throttle, turn, selfRight }` into the chassis's `Script.params`, and
+`BotDrive` actuates it. The AI never applies an impulse and never sees a drive
+constant. Two things follow:
+
+- The drive tuning measured in week 1 lives in **one** file, for the player and every
+  AI alike. No second copy to drift.
+- The week-5 Utility AI replaces `decide()` and nothing else — which is exactly what
+  T-3.13 specifies ("replaces the decision layer, not the actuation layer").
+
+`decide(state, dt)` is a near-pure function of a gathered `state` (range, heading
+error, speed, uprightness, nearest-pit range and bearing, wall proximity). Utility
+scoring drops straight onto that object.
+
+Behaviour priority, highest first: **knocked-out → self-right → avoid-pit →
+back-off → break-off → disengage → align → close → attack.**
+
+| Decision | Why it exists |
+|---|---|
+| `avoid-pit` outranks attacking | a pit is lethal; nothing is worth driving into one |
+| `break-off` after 2.5 s attacking | two bots pressed together jitter, so speed never reads as "stuck" — without a dwell cap the fight is one endless grind (measured: locked at 0.90 m indefinitely) |
+| stuck test gated on the *previous* throttle | pivoting in place is legitimately stationary and must not read as wedged |
+| proportional turn (x1.6, clamped) | settles instead of oscillating, **and it is what corrects the yaw drift the spinner's reaction torque produces** |
+
+**Measured.** Against a stationary player the opponent closed 5.44 m → 0.88 m in
+about 1 s and then cycled properly:
+
+```
+attack → break-off → back-off → align → close → attack → break-off → …
+range: 5.44 → 0.88 → 3.32 → 1.03 → 3.41 → 1.11
+```
+
+Damage was exchanged both ways (opponent 102.4, player 94.1) and the player's
+front-right wheel reached `damaged`. Player keyboard control still works
+independently (2.23 m on a key press) and the AI bot correctly ignores the player's
+keys. Flipping the AI switches it to `self-right`.
+
+**T-3.14 decided: no nav grid.** Direct steering only. The arena is a bare 12 × 12 m
+box whose only obstacle is the other bot, so a grid plus A* would buy nothing that a
+heading error does not already express — and half-building both is precisely what
+T-3.14 warns against. Pits are handled by a repulsion term, not by pathing. Revisit
+only if week 5's arena hazards (T-5.12) introduce real geometry to route around.
+
+---
+
 ## 6. Destruction (T-5.1 – T-5.6)
 
 **No fracture solver is needed.** `Joint.breakForce` ships natively (confirmed, T-1.13): the joint disconnects and emits `physics.jointBroken` when its solver impulse exceeds `breakForce × timestep`. The "custom breakable-joint system" in the proposal is therefore *configuration plus event handling*.

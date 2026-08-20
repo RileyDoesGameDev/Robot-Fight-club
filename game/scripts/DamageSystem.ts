@@ -153,10 +153,20 @@ export default function create() {
       }
       return sum / list.length;
     };
+    // Read-modify-write: `params` is one field, so patching it REPLACES the whole
+    // object. AiDriver writes `intent` into the same params, and a blind write here
+    // would delete the AI's commands every time a wheel changed state.
+    const cur = call("scene.getComponent", { entity: bot.chassis, component: "Script" });
+    const existing = cur && !cur.isError && cur.content && cur.content.params ? cur.content.params : {};
     call("scene.setComponent", {
       entity: bot.chassis,
       component: "Script",
-      patch: { params: { driveLeft: authority(side.left), driveRight: authority(side.right) } },
+      patch: {
+        params: Object.assign({}, existing, {
+          driveLeft: authority(side.left),
+          driveRight: authority(side.right),
+        }),
+      },
     });
   }
 

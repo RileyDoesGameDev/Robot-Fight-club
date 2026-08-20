@@ -250,8 +250,29 @@ function assemble(engine, blueprintId, role, pose) {
 
   // ── controller ────────────────────────────────────────────────────────────
   // The opponent gets AiDriver once it exists (T-3.13); until then it is inert.
-  if (role === "player") {
-    attach({ entity: chassis, behavior: "BotDrive", enabled: true, params: {} });
+  // BotDrive is the actuation layer for EVERY driven bot. The player's reads the
+  // keyboard; an AI bot's reads `intent` written by an AiDriver brain (T-3.13), so
+  // the measured drive tuning lives in one file rather than being duplicated.
+  if (role !== "workshop") {
+    attach({
+      entity: chassis,
+      behavior: "BotDrive",
+      enabled: true,
+      params: { inputDriven: role === "player" },
+    });
+  }
+
+  // Anyone who is not the player gets a brain. It is a CHILD entity because an
+  // entity can hold only one Script and the chassis already carries BotDrive.
+  if (role !== "player" && role !== "workshop") {
+    const brain = createEntity({
+      components: {
+        Name: { value: "Bot_" + role + "_Brain" },
+        Transform: { position: [0, 0.4, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] },
+      },
+    }).content.entity;
+    reparent({ child: brain, parent: chassis });
+    attach({ entity: brain, behavior: "AiDriver", enabled: true, params: { role, target: "player" } });
   }
 
   const cls = (bundle.weightClasses.classes || []).find((c) => totalMass <= c.maxMassKg);
