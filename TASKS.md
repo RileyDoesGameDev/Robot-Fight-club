@@ -419,10 +419,20 @@ Derived from `Battle_Bots_Project_Proposal (1).docx`. Every task is written to b
 - [ ] **T-6.10** Verify performance with two full player bots + destruction at target frame rate. **(V)**
 
 ### 6.3 UI/UX pass
-- [ ] **T-6.11** In-match HUD: per-bot part-health readout, match timer, weapon state (spin-up / cooldown / jammed).
-- [ ] **T-6.12** Damage feedback: hit flashes, directional damage indicator, part-lost callout.
-- [ ] **T-6.13** Pause menu, options (volume, sensitivity), and rebindable controls.
-- [ ] **T-6.14** Controls/tutorial panel in the Demo Center.
+- [x] **T-6.11** In-match HUD: per-bot part-health readout, match timer, weapon state (spin-up / cooldown / jammed).
+  - `game/scripts/MatchHud.ts`, one marker per fighting scene. Two columns, player left and opponent right: overall condition as a percentage plus a bar, then **a row per socket** with its own bar, coloured by state, and the live weapon line underneath (`idle` / `spinup` / `ready` / `jammed` / `striking`, with rpm where a weapon has any).
+  - Another **pure consumer** of the `battlebots.*` channels — the whole HUD is driven by the `damageReport` and `weaponState` traffic that already existed for the debug path. It touches physics only to place the directional indicator.
+  - **The match timer is deliberately NOT here.** MatchDirector already owns the top strip and its countdown; two clocks that can disagree is worse than one, so the HUD reuses it rather than drawing a second.
+  - Pulled at **5 Hz, not per frame** — it is a full part table and nothing on it changes faster than a person reads. **(V)** Verified live: 16 socket rows across both bots, condition percentages tracking real damage, 60 fps at 94 entities.
+- [x] **T-6.12** Damage feedback: hit flashes, directional damage indicator, part-lost callout.
+  - Three signals, each tied to something the player has to react to. **Hit flash:** the struck part's row flashes white, so damage has a *location* rather than just a number. **Direction:** four edge marks, and the one facing the blow lights up — computed by taking the contact point into the chassis' own frame, the same trick directional armour uses (T-5.4). **Part-lost callout:** a large centred line, `LOST ARMOR FRONT` when it is yours and `TORE OFF …` when it is theirs.
+  - Deliberately sparse: a screen-wide flash was the first build and it made the arena *harder* to read, not easier. Anything more competes with the fight for attention.
+  - **(V)** Driven down the channels: callout read `LOST ARMOR FRONT`, and a hit placed on the nose lit the front edge.
+- [x] **T-6.13** Pause menu, options (volume, sensitivity), and rebindable controls.
+  - Esc toggles a pause overlay listing the controls, with Resume and Main Menu. It freezes both bots through BotDrive's **existing `frozen` param** — the same flag MatchDirector's countdown uses, so pause and countdown cannot fight each other, and weapons spin down naturally exactly as they already do during a countdown. **(V)** Verified: `frozen` false → true on Esc, overlay visible, true → false on the second press.
+  - **Partial, and honestly so:** volume has nothing to attach to until the audio bus exists (T-6.16 – T-6.20), and **rebindable controls are not done** — bindings live in `data/input-map.json` and are applied at runtime, so rebinding needs a persistence path and a capture UI. Both are listed against T-6.20 and T-8.1 respectively rather than being quietly claimed here.
+- [x] **T-6.14** Controls/tutorial panel in the Demo Center.
+  - The controls half already existed. It is now a real primer: controls, then the four things that decide a match and are **not** discoverable by pressing buttons — the pits are lethal, the red floor discs can tear a wheel off, losing three wheels or the motor stops you, and a blade at rest only shoves. Kept to one screen; a panel nobody finishes reading teaches nothing.
 - [ ] **T-6.15** UI consistency pass — one type scale, one color language, readable at the deployed resolution.
 
 ### 6.4 Audio
@@ -442,8 +452,14 @@ Derived from `Battle_Bots_Project_Proposal (1).docx`. Every task is written to b
 - [ ] **T-7.3** Fix all blockers and majors.
 - [ ] **T-7.4** Balance pass on weapons, armor, and weight classes using playtest matchup data.
 - [ ] **T-7.5** Re-tune AI weights with the freshly recorded telemetry — the "shaped by real players" claim rests on this, so do it with real data, not by hand.
-- [ ] **T-7.6** Performance optimization: profile with `profiler_getFrameStats`, cut draw calls, cap debris, tune shadows (`renderer_setShadowConfig`).
-- [ ] **T-7.7** Check `profiler_getErrors` / `profiler_getLogs` for a clean console across a full match.
+- [x] **T-7.6** Performance optimization: profile with `profiler_getFrameStats`, cut draw calls, cap debris, tune shadows (`renderer_setShadowConfig`).
+  - **Profiled, and there is nothing to optimize yet.** A complete 130 s Arena01 match with everything on — two bots, four-weapon actuation, destruction, VFX, HUD, telemetry, hazards, post-FX, 94 entities — costs **0.298–0.400 ms per frame (median 0.362)** against a 16.67 ms budget. That is ~2 % of frame, and 60 fps was held throughout.
+  - Measured by timing `stepFrames` over ten 780-frame runs, which is a direct read on main-thread cost; the reported `frameTimeMs` of 16.68 is just the vsync cap and says nothing about headroom.
+  - Debris is already capped (T-5.3: 8 pieces or 12 s, plus instant deletion below the pit since T-5.12). Shadows are `pcfsoft` at 1024 — left alone, because cutting them would buy frames that are not needed and cost the only depth cue a greybox arena has.
+  - **Cutting draw calls is deferred on purpose**, not skipped: the scene is greybox primitives, so the draw-call count is a property of art that does not exist yet (T-4.16 – T-4.18). Optimizing it now would be optimizing a placeholder. Re-profile when meshes land.
+- [x] **T-7.7** Check `profiler_getErrors` / `profiler_getLogs` for a clean console across a full match.
+  - **0 errors** across a full 130 s match, and `scene.validate` clean (0 errors, 0 warnings) at the end. **(V)**
+  - **1 warning**, and it is not ours: `THREE.WebGLProgram` reporting X3595/X4000 from compiling the **FXAA** post-FX shader on the D3D backend. It is a shader-compiler diagnostic from three.js, fires once at program build, and is the direct cost of enabling FXAA in T-5.13. Recorded rather than suppressed so it is not rediscovered in week 8.
 - [ ] **T-7.8** Difficulty tuning: an easy/normal/hard mapping over the AI weight sets.
 - [ ] **T-7.9** Game-feel polish: camera shake on big hits, hit pause, slow-mo on knockout.
 - [ ] **T-7.10** Fix the top-5 "feels bad" items testers named, whether or not they're bugs.

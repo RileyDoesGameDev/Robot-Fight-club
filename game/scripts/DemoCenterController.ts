@@ -28,13 +28,24 @@ const COL_BTN_ON = 0xd8a021;
 const COL_TEXT = 0xe8e8ee;
 const COL_DIM = 0x9aa0ad;
 
+/**
+ * The Demo Center's primer (T-6.14). Controls first, then the four things that
+ * actually decide a match and are not discoverable by pressing buttons: the pit,
+ * the floor spinners, what losing a part costs you, and the fact that a weapon has
+ * to be at speed to matter. Kept to one screen — a panel nobody finishes reading
+ * teaches nothing.
+ */
 const TIPS = [
   "W / S — drive forward and back",
   "A / D — turn (tank steer)",
-  "Space — spin up the weapon",
+  "Space — weapon: hold to spin up, or to swing",
   "R — self-right when flipped",
-  "Esc — pause",
-  "Spinners make your bot veer. Correct as you close.",
+  "Esc — pause    F3 — AI debug overlay",
+  "",
+  "The corner pits are real. Fall in and you lose.",
+  "Red floor discs bite — they can tear a wheel off.",
+  "Lose 3 of 4 wheels or your motor and you stop.",
+  "A blade at rest only shoves. Spin up before you commit.",
 ];
 
 export default function create() {
@@ -74,11 +85,11 @@ export default function create() {
     ui.rows = l.slice(2, 2 + OPP_ROWS);
 
     // left-bottom: controls
-    const tips = panel([0.005, 0.64], [0.24, 0.985]);
+    const tips = panel([0.005, 0.55], [0.24, 0.985]);
     tips.children.push(text([0.05, 0.03], [0.95, 0.13], "CONTROLS", 14));
     for (let i = 0; i < TIPS.length; i++) {
-      const y0 = 0.17 + i * 0.135;
-      tips.children.push(text([0.06, y0], [0.97, y0 + 0.12], TIPS[i], 11, COL_DIM));
+      const y0 = 0.12 + i * 0.086;
+      tips.children.push(text([0.06, y0], [0.97, y0 + 0.08], TIPS[i], 10, COL_DIM));
     }
     graft(tips);
   }
