@@ -48,7 +48,7 @@ export default function create() {
   let offReport = null;
   let offClick = null;
   let latestReport = null;
-  let ui = { canvas: 0, banner: 0, sub: 0, btnA: 0, btnB: 0 };
+  let ui = { canvas: 0, banner: 0, sub: 0, btnA: 0, btnB: 0, btnC: 0 };
   let sceneName = "Arena01";
   let mode = "match";
   let matchSeconds = 120;
@@ -118,12 +118,14 @@ export default function create() {
     // centre: result + the two ways out
     const mid = panel([0.3, 0.4], [0.7, 0.6]);
     mid.children.push(text([0.02, 0.06], [0.98, 0.44], "", 16));
-    mid.children.push(button([0.06, 0.55], [0.48, 0.92], "Rematch", "match:rematch"));
-    mid.children.push(button([0.52, 0.55], [0.94, 0.92], "Change Bot", "match:changebot"));
+    mid.children.push(button([0.04, 0.55], [0.34, 0.92], "Rematch", "match:rematch"));
+    mid.children.push(button([0.36, 0.55], [0.66, 0.92], "Change Bot", "match:changebot"));
+    mid.children.push(button([0.68, 0.55], [0.96, 0.92], "Results", "match:results"));
     const m = graft(mid);
     ui.sub = m[1];
     ui.btnA = m[2];
     ui.btnB = m[3];
+    ui.btnC = m[4];
     // the centre panel only matters once the match is over
     call("ui.setProps", { entity: m[0], props: { visible: false } });
     ui.midPanel = m[0];
@@ -142,7 +144,87 @@ export default function create() {
     });
     call("ui.setProps", { entity: ui.btnA, props: { visible: true, disabled: false } });
     call("ui.setProps", { entity: ui.btnB, props: { visible: true, disabled: false } });
+    call("ui.setProps", { entity: ui.btnC, props: { visible: true, disabled: false } });
     call("ui.setProps", { entity: ui.banner, props: { text: "MATCH OVER", color: COL_DIM } });
+  }
+
+  /**
+   * Persist the result (T-6.5). Two files, deliberately:
+   *   /data/last-match.json  the match just played, which PostMatch reads
+   *   /data/history.json     an append-only log, capped, which the menu reads
+   * Written here because `finish` is the only place that knows a match ended, and
+   * because everything it needs dies with the scene — DamageSystem's health table
+   * is per-instance by design (T-5.8), so a post-match screen in another scene has
+   * no way to ask for it after the fact.
+   */
+  function persist(call, engine, winner, loser, reason) {
+    let dealt = {};
+    let parts = [];
+    latestReport = null;
+    engine.mcp.emit("battlebots.requestReport", {});
+    if (latestReport) {
+      for (const b of latestReport.bots) dealt[b.role] = Math.round(b.damageDealt * 10) / 10;
+      parts = latestReport.parts.map((p) => ({ role: p.role, socket: p.socket, part: p.part,
+        hp: p.hp, maxHp: p.maxHp, state: p.state }));
+    }
+    const lost = {};
+    for (const p of parts) if (p.state === "destroyed") lost[p.role] = (lost[p.role] || 0) + 1;
+
+    // Names come from the SPAWNER markers, not from a fixed pair of files. Reading
+    // /data/bots/__opponent.json is wrong in Arena01, whose spawner names a blueprint
+    // directly (`BotSpawn:opp-wedge:opponent`) and never touches that file — it
+    // reported whichever opponent the Demo Center had last written. The marker is
+    // renamed `BotSpawned:<blueprintId>:<role>` once the bot exists, so it is the
+    // only thing that knows what was actually built.
+    // Bundle first, then the loose file, then the raw id. A roster blueprint like
+    // `opp-wedge` exists only inside the bundle — the engine project's /data/bots
+    // holds just the scratch ids (__selected, __opponent) the select screen writes —
+    // so a file-only lookup gave the display name as "opp-wedge" instead of
+    // "Doorstop".
+    let bundleBots = {};
+    const bres = call("project.readFile", { path: "/data/bundle.json" });
+    if (bres && !bres.isError && bres.content) {
+      try { bundleBots = JSON.parse(bres.content.text).bots || {}; } catch (err) { bundleBots = {}; }
+    }
+    const bots = {};
+    for (const e of call("scene.query", { components: ["Name"] }).content.entities) {
+      const n = call("scene.getComponent", { entity: e, component: "Name" });
+      const v = n && !n.isError && n.content ? n.content.value : null;
+      const m = v ? /^BotSpawned:(.+):(player|opponent)$/.exec(v) : null;
+      if (!m) continue;
+      const id = m[1];
+      let name = bundleBots[id] && bundleBots[id].name ? bundleBots[id].name : null;
+      if (!name) {
+        const r = call("project.readFile", { path: "/data/bots/" + id + ".json" });
+        if (r && !r.isError && r.content) {
+          try { name = JSON.parse(r.content.text).name; } catch (err) { name = null; }
+        }
+      }
+      bots[m[2]] = name || id;
+    }
+
+    const record = {
+      scene: sceneName, mode,
+      winner: winner || null, loser: loser || null, reason,
+      playerRole, bots,
+      damageDealt: dealt, partsLost: lost, parts,
+      elapsedSeconds: Math.round(clock * 10) / 10,
+    };
+    call("project.writeFile", { path: "/data/last-match.json", text: JSON.stringify(record, null, 2) + "\n" });
+
+    // History is append-only but capped: it is read by a menu, not analysed, and an
+    // unbounded log in browser storage is a slow leak. Telemetry (T-5.14) is where
+    // the full record lives if anyone wants depth.
+    let history = [];
+    const h = call("project.readFile", { path: "/data/history.json" });
+    if (h && !h.isError && h.content) {
+      try { const p = JSON.parse(h.content.text); if (Array.isArray(p)) history = p; } catch (err) { history = []; }
+    }
+    history.push({ scene: sceneName, mode, winner: record.winner, reason,
+      playerWon: record.winner === playerRole, bots, elapsedSeconds: record.elapsedSeconds });
+    if (history.length > 50) history = history.slice(history.length - 50);
+    call("project.writeFile", { path: "/data/history.json", text: JSON.stringify(history, null, 2) + "\n" });
+    engine.console.log("[Match] persisted — history " + history.length + " entries");
   }
 
   function finish(call, engine, winner, loser, reason) {
@@ -153,6 +235,9 @@ export default function create() {
     gameState(call, "end");
     showResult(call, engine);
     engine.mcp.emit("battlebots.matchResult", { winner, loser, reason, mode });
+    // After the event, so MatchTelemetry's own listener has already run and the
+    // damage report it triggers is the final one.
+    persist(call, engine, winner, loser, reason);
     engine.console.log("[Match] over — winner=" + (winner || "draw") + " (" + reason + ")");
   }
 
@@ -203,6 +288,14 @@ export default function create() {
         } else if (id === "match:changebot") {
           engine.console.log("[Match] back to bot select");
           call("project.loadScene", { name: "BotSelect" });
+          return;
+        }
+        if (id === "match:results") {
+          // The breakdown lives in its own scene (T-6.4) reading /data/last-match.json,
+          // because everything it shows dies with this one.
+          call("project.writeFile", { path: "/data/return-to.json",
+            text: JSON.stringify({ scene: sceneName, mode }) + "\n" });
+          call("project.loadScene", { name: "PostMatch" });
         }
       });
 

@@ -148,8 +148,9 @@ export default function create() {
     }
 
     const bar = panel([0.26, 0.88], [0.74, 0.975]);
-    bar.children.push(button([0.015, 0.15], [0.23, 0.85], "< Prev", "cmd:prev"));
-    bar.children.push(button([0.245, 0.15], [0.46, 0.85], "Next >", "cmd:next"));
+    bar.children.push(button([0.015, 0.15], [0.17, 0.85], "< Prev", "cmd:prev"));
+    bar.children.push(button([0.185, 0.15], [0.34, 0.85], "Next >", "cmd:next"));
+    bar.children.push(button([0.36, 0.15], [0.5, 0.85], "Menu", "cmd:menu"));
     bar.children.push(button([0.52, 0.15], [0.74, 0.85], "PRACTICE", "cmd:practice"));
     bar.children.push(button([0.76, 0.15], [0.985, 0.85], "FIGHT", "cmd:fight"));
 
@@ -256,7 +257,16 @@ export default function create() {
       buildUi(call);
       showPreview(call);
       refresh(call);
-      setHint(call, roster.length + " bots — browse, then PRACTICE to spar or FIGHT for a timed match", false);
+      let intent = "browse";
+      const sess = call("project.readFile", { path: "/data/session.json" });
+      if (sess && !sess.isError && sess.content) {
+        try { intent = JSON.parse(sess.content.text).intent || "browse"; } catch (err) { intent = "browse"; }
+      }
+      setHint(call, intent === "practice"
+        ? roster.length + " bots — pick one, then PRACTICE to spar in the Demo Center"
+        : intent === "fight"
+          ? roster.length + " bots — pick one, then FIGHT for a timed match in the arena"
+          : roster.length + " bots — browse, then PRACTICE to spar or FIGHT for a timed match", false);
 
       off = engine.mcp.on("ui.clicked", (p) => {
         const id = p && p.actionId;
@@ -269,6 +279,7 @@ export default function create() {
         }
         if (id === "cmd:prev") return move(call, -1);
         if (id === "cmd:next") return move(call, 1);
+        if (id === "cmd:menu") { call("project.loadScene", { name: "MainMenu" }); return; }
         if (id === "cmd:practice" || id === "cmd:fight") {
           // Launching is confirming: persist the choice, then hand off. Arena01 and
           // DemoCenter both read /data/bots/__selected.json through their player

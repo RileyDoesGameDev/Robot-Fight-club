@@ -38,3 +38,7 @@ game/data/bots/__player.json
 # project when you need to run game/data/ai/aggregate.js.
 game/telemetry/
 game/data/ai/weights.suggested.json
+game/data/last-match.json
+game/data/history.json
+game/data/session.json
+game/data/return-to.json
