@@ -77,8 +77,13 @@ export default function create() {
   function ensureBindings(call, engine) {
     if (bindingsReady) return;
     bindingsReady = true;
+    // Bind per action, not all-or-nothing. Gating the whole map on one action being
+    // present meant any action added later never bound at all in a session that had
+    // already applied the old set — which is exactly how ai.debug (F3) silently went
+    // missing after it was added to the map.
     const existing = call("input.listActions", {}).content || [];
-    if (existing.some((a) => a.action === "drive.forward")) return;
+    const have = new Set((Array.isArray(existing) ? existing : existing.actions || [])
+      .map((a) => (typeof a === "string" ? a : a.action)));
     let map = null;
     try {
       map = JSON.parse(call("project.readFile", { path: BUNDLE_PATH }).content.text).inputMap.player1;
@@ -86,10 +91,13 @@ export default function create() {
       map = null;
     }
     if (!map) return;
+    let added = 0;
     for (const action of Object.keys(map)) {
+      if (have.has(action)) continue;
       call("input.mapAction", { action, codes: map[action] });
+      added++;
     }
-    engine.console.log("[BotDrive] applied " + Object.keys(map).length + " input bindings");
+    if (added) engine.console.log("[BotDrive] applied " + added + " input bindings");
   }
 
   return {

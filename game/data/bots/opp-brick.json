@@ -45,5 +45,6 @@
     "weightClass": "heavy",
     "armorTotal": 480,
     "weaponRating": 0
-  }
+  },
+  "aiPersonality": "defensive"
 }

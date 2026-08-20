@@ -41,5 +41,6 @@
     "weightClass": "heavy",
     "armorTotal": 200,
     "weaponRating": 150
-  }
+  },
+  "aiPersonality": "aggressive"
 }

@@ -224,14 +224,16 @@ function assemble(engine, blueprintId, role, pose) {
     };
     addComponent({ entity, component: "Joint", data: { joints: [link] } });
 
-    // A powered weapon gets its own controller (T-3.9). autoSpin for anyone who is
-    // not the player, so the opponent's weapon runs until AiDriver lands (T-3.13).
+    // A powered weapon gets its own controller (T-3.9). `autoSpin` is now only for
+    // display roles — the select turntable and the Workshop preview, where a turning
+    // blade is decoration. A fighting bot decides for itself: the player holds a key,
+    // and an AI bot gets `spinCommand` written by UtilityAi (T-5.16).
     if (powered) {
       attach({
         entity,
         behavior: "WeaponController",
         enabled: true,
-        params: { role, partId: a.partId, autoSpin: role !== "player" },
+        params: { role, partId: a.partId, autoSpin: role === "workshop" || role === "select" },
       });
     }
 
@@ -275,7 +277,11 @@ function assemble(engine, blueprintId, role, pose) {
       },
     }).content.entity;
     reparent({ child: brain, parent: chassis });
-    attach({ entity: brain, behavior: "AiDriver", enabled: true, params: { role, target: "player" } });
+    // UtilityAi scores its options against weights in data/ai/weights.json (T-5.17).
+    // A blueprint can name its own temperament, so a bot's character is data rather
+    // than a branch here; AiDriver remains in the repo as the scripted baseline.
+    attach({ entity: brain, behavior: "UtilityAi", enabled: true,
+      params: { role, target: "player", personality: blueprint.aiPersonality || "aggressive" } });
   }
 
   const cls = (bundle.weightClasses.classes || []).find((c) => totalMass <= c.maxMassKg);

@@ -166,9 +166,15 @@ export default function create() {
         }
       }
 
-      const commanded = params.autoSpin === true
-        ? partState !== "destroyed"
-        : engine.input.actionHeld(params.action || "weapon.primary");
+      // Three command sources, most specific first. `spinCommand` is written by
+      // UtilityAi, which manages spin deliberately (hold it up for a charge, drop it
+      // to save the motor) — so it has to outrank `autoSpin`, which only ever means
+      // "always on" and is now reserved for display roles like the select turntable.
+      const commanded = typeof params.spinCommand === "boolean"
+        ? params.spinCommand && partState !== "destroyed"
+        : params.autoSpin === true
+          ? partState !== "destroyed"
+          : engine.input.actionHeld(params.action || "weapon.primary");
 
       const ceiling = ceilingRpm();
       const rpm = currentRpm(call, entity);

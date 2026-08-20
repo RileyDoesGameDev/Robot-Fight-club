@@ -479,6 +479,92 @@ only if week 5's arena hazards (T-5.12) introduce real geometry to route around.
 
 ---
 
+### The utility AI (T-5.15 – T-5.21) — what actually ships
+
+`game/scripts/UtilityAi.ts` replaces AiDriver's priority chain with scored choice, in
+the same seat and under the same contract. AiDriver stays in the repo as the scripted
+baseline to measure against. **The structural bet above paid off exactly as intended:
+the drivetrain was not touched.**
+
+**Why scoring.** The chain could only *order* behaviours, never *compare* them, so
+every new one meant picking a slot. Now each action scores itself against the same
+world state and the best wins, which is how `push-to-hazard` — a behaviour the
+scripted version never had — could be added without renegotiating anything.
+
+**Nine considerations**, all normalised 0..1: `proximity`, `alignment`, `ownHealth`,
+`foeHealth`, `weaponSpin`, `bladeDown`, `weaponLost`, `hazardNear`, `wallNear`,
+`foeHazard`, `stuck`, `engaged`. **Seven actions**: attack, charge, circle-strafe,
+retreat, spin-up, ram, push-to-hazard.
+
+**Weights are data** (`game/data/ai/weights.json`, T-5.18) — three personalities
+(T-5.20), tuned without a recompile. Health comes from DamageSystem's existing report
+rather than a second tally, polled twice a second.
+
+**Two states are gated, not scored.** Knocked out, and flipped, bypass scoring
+entirely. A mis-tuned weight file must not be able to make a bot lie on its back
+deliberating; that is a correctness property, not a preference. The pit is a third
+near-gate: it is applied as a **veto** (-2 to everything but retreat) rather than a
+weight, because instant death should not be something a weight file can price as
+merely expensive.
+
+**Hysteresis** is two mechanisms because they solve different problems.
+`minDwellSeconds` stops sub-frame dithering between near-equal scores;
+`hysteresisBonus` gives the incumbent a standing edge so a behaviour must be beaten
+clearly, not narrowly.
+
+#### Three bugs worth recording, because each was a modelling error rather than a typo
+
+**1. A negative weight can only penalise, never reward.** `ram: { weaponSpin: -0.60 }`
+was *meant* to say "ram when the blade is down" — but with `weaponSpin` already at 0 the
+term contributes exactly 0. The same mistake silently disabled `spin-up` in all three
+personalities; it never once won a vote. Saying "do X when Y is absent" requires Y's
+complement as its own consideration, hence `bladeDown`. **In a weighted-sum model,
+every consideration you want to reward needs to be the thing that is present.**
+
+**2. One consideration covering two states collapses both.** Replacing that weight with
+`bladeDown` made *every* bot ram forever, because a blade still spinning up and a blade
+sheared clean off both read as `bladeDown: 1` — and they want opposite behaviours
+(spin-up vs ram). Splitting `weaponLost` out fixed it. A passive wedge counts as
+`weaponLost` too, which is why Doorstop rams: it has a weapon *part* but no controller,
+so entity-exists was never a sufficient test.
+
+**3. A behaviour has to actually do what its name says.** `circle-strafe` drove forward
+at 0.6 on an offset heading, which does not orbit two 162 kg bots that are touching —
+it leans on them. `proximity` stayed pinned, so `engaged` never decayed, so attacking
+stayed penalised, and the defensive and opportunist sets orbited *forever*. It now
+reverses while turning when inside engagement range. The lesson is that a broken action
+implementation reads exactly like bad weights, and tuning numbers cannot fix it.
+
+The first version of the scored AI also just ground into the player for 30 s straight
+(`attack`, 40 samples, zero switches) because the scripted version's `ATTACK_DWELL` had
+no equivalent. That became `engaged` — a consideration rather than a hard timer, so
+breaking off *competes* with attacking instead of pre-empting it. Its threshold is
+nose-to-nose rather than merely close, because circling is itself a way of disengaging.
+
+**Measured (T-5.22).** 30 s per personality, Ravager vs Ravager, sampled every 0.75 s:
+
+| Personality | Switches | Mix |
+|---|---|---|
+| aggressive | 17 | attack 9, ram 9, retreat 6 |
+| defensive | 16 | attack 8, charge 6, circle-strafe 7, spin-up 3 |
+| opportunist | 13 | circle-strafe 11, attack 7, ram 6 |
+
+Three distinct temperaments, none monotone, none stuck, zero errors. `spin-up`
+appearing at all is the evidence that fix 1 landed.
+
+**Debug overlay (T-5.21).** F3 toggles a live panel of every consideration value and
+every action score, winner marked. `params.debug` forces it on without a keypress —
+which is also how it gets tested, since `input.synthesizeKey` does not drive action
+state from a script (`drive.forward` reads `held: false` with `KeyW` synthesised), so
+the key path itself is only exercised by hand.
+
+**Weapon management.** Each action declares whether it wants the blade turning, written
+as `spinCommand` onto the weapon's params and only on change. `autoSpin` is now reserved
+for display roles — the select turntable and the Workshop preview — because "always on"
+is precisely the decision this AI exists to make.
+
+---
+
 ## 5b. The match: lifecycle and scene flow (T-6.2, T-6.3, T-3.15)
 
 Everything above makes a fight *possible*. This is what makes it a **match** — it

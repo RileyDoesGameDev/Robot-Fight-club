@@ -37,5 +37,6 @@
     "weightClass": "light",
     "armorTotal": 0,
     "weaponRating": 180
-  }
+  },
+  "aiPersonality": "opportunist"
 }

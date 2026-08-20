@@ -835,7 +835,8 @@
         "weightClass": "middle",
         "armorTotal": 140,
         "weaponRating": 150
-      }
+      },
+      "aiPersonality": "defensive"
     },
     "hornet": {
       "name": "Hornet",
@@ -876,7 +877,8 @@
         "weightClass": "light",
         "armorTotal": 0,
         "weaponRating": 180
-      }
+      },
+      "aiPersonality": "opportunist"
     },
     "opp-brick": {
       "name": "Anvil",
@@ -925,7 +927,8 @@
         "weightClass": "heavy",
         "armorTotal": 480,
         "weaponRating": 0
-      }
+      },
+      "aiPersonality": "defensive"
     },
     "opp-wedge": {
       "name": "Doorstop",
@@ -970,7 +973,8 @@
         "weightClass": "middle",
         "armorTotal": 140,
         "weaponRating": 180
-      }
+      },
+      "aiPersonality": "aggressive"
     },
     "player-slice": {
       "name": "Blue Ruin",
@@ -1015,7 +1019,8 @@
         "weightClass": "middle",
         "armorTotal": 90,
         "weaponRating": 150
-      }
+      },
+      "aiPersonality": "aggressive"
     },
     "ravager": {
       "name": "Ravager",
@@ -1060,7 +1065,8 @@
         "weightClass": "heavy",
         "armorTotal": 200,
         "weaponRating": 150
-      }
+      },
+      "aiPersonality": "aggressive"
     }
   },
   "damage": {
@@ -1139,7 +1145,191 @@
       ],
       "ui.pause": [
         "Escape"
+      ],
+      "ai.debug": [
+        "F3"
       ]
+    }
+  },
+  "aiWeights": {
+    "$comment": "Utility-AI weights (T-5.18, T-5.20). Score for an action = bias + sum(weight * consideration), every consideration normalised 0..1. Tuning lives here so it needs no recompile — see docs/DESIGN.md section 5 'The opponent AI'. A weight's SIGN is the interesting part: 'proximity: -0.5' on charge means charging is attractive when far away, not that being close is bad.",
+    "considerations": {
+      "proximity": "1 at contact, 0 at maxRangeM or beyond",
+      "alignment": "1 nose exactly on the target, 0 facing directly away",
+      "ownHealth": "1 undamaged, 0 dead — mean part hp fraction",
+      "foeHealth": "same, for the target",
+      "weaponSpin": "0..1 of the weapon's target rpm; 0 for a bot with no weapon",
+      "hazardNear": "1 on the lip of a pit, 0 at hazardRadiusM or beyond",
+      "wallNear": "1 against a wall, 0 in the centre",
+      "foeHazard": "1 when the TARGET is on a pit lip — the push-it-in opportunity",
+      "stuck": "1 when we asked for throttle and barely moved",
+      "bladeDown": "1 - weaponSpin. Its own consideration because a NEGATIVE weight on weaponSpin contributes nothing when weaponSpin is already 0 — it can only penalise a spinning blade, never reward a stopped one. 'Spin up when the blade is slow' has to be said with a positive weight on the absence.",
+      "weaponLost": "1 when this bot has no usable weapon at all — none fitted, or its head has been sheared off. Distinct from bladeDown on purpose: a blade that is merely still spinning up wants spin-up, whereas a blade that is GONE wants ram, and one consideration covering both made every bot ram forever the moment a weapon was lost.",
+      "engaged": "how long we have been nose-to-nose, over attackDwellSeconds. The signal that a grind is not working — the scripted AiDriver spent this as a hard ATTACK_DWELL timer; here it is a consideration, so breaking off competes with attacking instead of pre-empting it."
+    },
+    "tuning": {
+      "maxRangeM": 6,
+      "engageRangeM": 2.2,
+      "backoffRangeM": 0.75,
+      "hazardRadiusM": 2.4,
+      "arenaHalfM": 5.6,
+      "uprightDot": 0.35,
+      "stuckSpeedMps": 0.35,
+      "stuckSeconds": 1.2,
+      "alignToleranceRad": 0.3,
+      "hysteresisBonus": 0.15,
+      "minDwellSeconds": 0.45,
+      "healthPollSeconds": 0.5,
+      "strafeBiasRad": 0.55,
+      "attackDwellSeconds": 2.5,
+      "engagedProximity": 0.8
+    },
+    "personalities": {
+      "aggressive": {
+        "$comment": "Closes and stays closed. Ignores its own health almost entirely, so it will trade hits it should not. Beatable by out-ranging it.",
+        "attack": {
+          "bias": 0.2,
+          "alignment": 0.9,
+          "proximity": 0.8,
+          "weaponSpin": 0.6,
+          "engaged": -1.6
+        },
+        "charge": {
+          "bias": 0.3,
+          "alignment": 0.7,
+          "proximity": -0.5,
+          "weaponSpin": 0.2
+        },
+        "circle-strafe": {
+          "bias": 0.05,
+          "proximity": 0.3,
+          "alignment": -0.2,
+          "weaponSpin": -0.3,
+          "engaged": 0.8
+        },
+        "retreat": {
+          "bias": -0.2,
+          "ownHealth": -0.5,
+          "stuck": 0.9,
+          "wallNear": 0.3,
+          "engaged": 1.6
+        },
+        "spin-up": {
+          "bias": 0.1,
+          "bladeDown": 0.8,
+          "weaponLost": -1.5,
+          "proximity": -0.4
+        },
+        "ram": {
+          "bias": 0,
+          "weaponLost": 1.2,
+          "proximity": 0.5,
+          "alignment": 0.5
+        },
+        "push-to-hazard": {
+          "bias": 0,
+          "foeHazard": 1.2,
+          "proximity": 0.5,
+          "alignment": 0.4
+        }
+      },
+      "defensive": {
+        "$comment": "Will not commit without a blade at speed, and disengages when hurt. Harder to burst down, but gives you room to set up.",
+        "attack": {
+          "bias": 0,
+          "alignment": 0.8,
+          "proximity": 0.6,
+          "weaponSpin": 0.9,
+          "ownHealth": 0.4,
+          "engaged": -1.8
+        },
+        "charge": {
+          "bias": 0.1,
+          "alignment": 0.6,
+          "proximity": -0.4,
+          "weaponSpin": 0.5,
+          "ownHealth": 0.5
+        },
+        "circle-strafe": {
+          "bias": 0.3,
+          "proximity": 0.4,
+          "ownHealth": -0.3,
+          "weaponSpin": -0.2,
+          "engaged": 1
+        },
+        "retreat": {
+          "bias": 0,
+          "ownHealth": -1,
+          "proximity": 0.6,
+          "stuck": 0.9,
+          "engaged": 1.5
+        },
+        "spin-up": {
+          "bias": 0.3,
+          "bladeDown": 1,
+          "weaponLost": -1.5,
+          "proximity": -0.2
+        },
+        "ram": {
+          "bias": -0.3,
+          "weaponLost": 1.3,
+          "proximity": 0.4,
+          "alignment": 0.4
+        },
+        "push-to-hazard": {
+          "bias": 0,
+          "foeHazard": 1,
+          "proximity": 0.4,
+          "alignment": 0.4
+        }
+      },
+      "opportunist": {
+        "$comment": "Circles at range and punishes a weakened or badly-placed opponent. The foeHealth weights are NEGATIVE on its attacks — a hurt target is what draws it in.",
+        "attack": {
+          "bias": 0,
+          "alignment": 0.8,
+          "proximity": 0.6,
+          "weaponSpin": 0.7,
+          "foeHealth": -0.6,
+          "engaged": -1.7
+        },
+        "charge": {
+          "bias": 0.1,
+          "alignment": 0.6,
+          "proximity": -0.4,
+          "foeHealth": -0.5,
+          "weaponSpin": 0.3
+        },
+        "circle-strafe": {
+          "bias": 0.35,
+          "proximity": 0.3,
+          "foeHealth": 0.4,
+          "engaged": 1.2
+        },
+        "retreat": {
+          "bias": -0.1,
+          "ownHealth": -0.7,
+          "stuck": 0.9,
+          "engaged": 1.4
+        },
+        "spin-up": {
+          "bias": 0.25,
+          "bladeDown": 0.9,
+          "weaponLost": -1.5
+        },
+        "ram": {
+          "bias": -0.2,
+          "weaponLost": 1.4,
+          "proximity": 0.4,
+          "foeHealth": -0.4
+        },
+        "push-to-hazard": {
+          "bias": 0.1,
+          "foeHazard": 1.3,
+          "proximity": 0.5,
+          "alignment": 0.4
+        }
+      }
     }
   }
 }

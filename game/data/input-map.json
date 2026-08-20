@@ -28,6 +28,9 @@
     ],
     "ui.pause": [
       "Escape"
+    ],
+    "ai.debug": [
+      "F3"
     ]
   }
 }
