@@ -14,12 +14,9 @@
   ],
   "requiresSocketType": "weapon",
   "colliderSpec": {
-    "shape": "box",
-    "halfExtents": [
-      0.35,
-      0.03,
-      0.06
-    ],
+    "shape": "cylinder",
+    "radius": 0.35,
+    "halfHeight": 0.03,
     "friction": 0.3,
     "restitution": 0.1
   },
@@ -34,6 +31,11 @@
     "spinUpSeconds": 2.4,
     "motorMaxForce": 900,
     "energyLossPerHit": 0.35,
-    "jamThresholdRpm": 180
+    "jamThresholdRpm": 180,
+    "jamCooldownSeconds": 1.5,
+    "spinUpGraceSeconds": 0.8,
+    "jamFraction": 0.35,
+    "sweptEnvelope": true,
+    "spinDownSeconds": 4
   }
 }

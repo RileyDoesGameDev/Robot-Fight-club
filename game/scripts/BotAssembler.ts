@@ -224,6 +224,17 @@ function assemble(engine, blueprintId, role, pose) {
     };
     addComponent({ entity, component: "Joint", data: { joints: [link] } });
 
+    // A powered weapon gets its own controller (T-3.9). autoSpin for anyone who is
+    // not the player, so the opponent's weapon runs until AiDriver lands (T-3.13).
+    if (powered) {
+      attach({
+        entity,
+        behavior: "WeaponController",
+        enabled: true,
+        params: { role, partId: a.partId, autoSpin: role !== "player" },
+      });
+    }
+
     created.push({
       entity,
       socketId: a.socketId,
@@ -239,7 +250,9 @@ function assemble(engine, blueprintId, role, pose) {
 
   // ── controller ────────────────────────────────────────────────────────────
   // The opponent gets AiDriver once it exists (T-3.13); until then it is inert.
-  if (role === "player") attach({ entity: chassis, behavior: "BotDrive", enabled: true });
+  if (role === "player") {
+    attach({ entity: chassis, behavior: "BotDrive", enabled: true, params: {} });
+  }
 
   const cls = (bundle.weightClasses.classes || []).find((c) => totalMass <= c.maxMassKg);
 

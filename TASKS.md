@@ -184,10 +184,13 @@ Derived from `Battle_Bots_Project_Proposal (1).docx`. Every task is written to b
   - Role-based filtering in the damage system: same-bot pairs and arena geometry never damage anything. Deliberately **not** `Collider.collisionGroups` — masks would risk the bots' physical solidity against the floor and each other, and the filter is a single comparison.
 
 ### 3.2 Weapon vs. armor
-- [ ] **T-3.9** Implement the spinner weapon controller: spin-up ramp, RPM state, energy loss on impact, jam/stall state.
-- [~] **T-3.10** Implement weapon-vs-armor interaction: armor reduces incoming damage, the weapon takes reaction damage on hits.
+- [x] **T-3.9** Implement the spinner weapon controller: spin-up ramp, RPM state, energy loss on impact, jam/stall state.
+  - **Result:** `game/scripts/WeaponController.ts`. Spin-up linear to 1396/1400 rpm in exactly 2.4 s; spin-down linear over 4.0 s; states `idle → spinup → ready → spindown`, plus relative-stall `jammed` detection. 86 weapon hits in one engagement against a facing target, blade forces 3.7–9.3 kN (under the 12 kN mount). Energy loss bleeds the *commanded* ramp on each hit so a weapon that keeps connecting never reaches full speed.
+- [x] **T-3.10** Implement weapon-vs-armor interaction: armor reduces incoming damage, the weapon takes reaction damage on hits.
+  - Armour reduction is measurable (light 0.15 vs medium 0.30 changes who loses the exchange), and reaction damage falls out of the model — both sides of a contact take damage, so the attacker's own front plate wears. Weapon damage now also scales by `spinFraction`, so a stopped blade does `ram` damage rather than weapon damage.
   - Armour reduction works and is measurable (the light-plate rammer takes more damage than the medium-plate defender). **Reaction damage falls out for free** — both sides of a contact take damage, so ramming face-first hurts your own plate. Still missing: weapon-specific interaction, which needs the spinner controller (T-3.9).
-- [ ] **T-3.11** Verify big hits produce plausible physics reaction (knockback, spin-out) rather than jitter or explosive launches. **(V) (R)**
+- [~] **T-3.11** Verify big hits produce plausible physics reaction (knockback, spin-out) rather than jitter or explosive launches. **(V) (R)**
+  - **Substantial evidence gathered.** A bar-shaped blade at 1400 rpm either tunnels (0 contacts) or resolves at **132 kN** — an explosive launch, exactly the failure this task warns about. Colliding the swept envelope instead keeps forces at 3.7–9.3 kN with the blade attached and no jitter. **Still to verify:** knockback and spin-out during a full match with the AI opponent driving, and behaviour mid-disassembly (overlaps T-5.7).
 
 ### 3.3 First AI opponent (scripted)
 - [x] **T-3.12** Build 2–3 pre-built opponent blueprints in `data/bots/` (a wedge, a spinner, a brick).
@@ -374,6 +377,7 @@ Derived from `Battle_Bots_Project_Proposal (1).docx`. Every task is written to b
 - **Engine edits vs. game code.** Game logic lives in project scripts (`script_create` / `script_edit` / `script_hotReload`) — hot-reloadable, no Docker rebuild. Touch `packages/engine-core` **only** if a genuine engine gap blocks the game, and log it as engine work, not game work.
 - **Every scene change is a transaction.** Wrap multi-step authoring in `undo_beginTransaction` / `undo_commit`.
 - **Validate before committing a scene.** `scene_validate` must come back clean.
+- **Fast rotation needs a swept collider.** At the 60 Hz fixed step, a rotating part whose tip travels more than ~0.2 m per step will tunnel, and the contacts that do resolve are explosive. Collide the swept envelope and scale damage by actual rpm — see `docs/DESIGN.md` §5. This applies to every weapon added in week 4, not just the spinner.
 - **Data over code.** Parts, bots, AI weights, and damage constants live in JSON under `data/` so tuning never needs a recompile.
 - **Commit messages carry task IDs.** `T-5.2: drive detachment from physics.jointBroken`.
 - **Every (V) task gets a recorded result** — a number, a screenshot, or a log line. "It seemed fine" is not a validation.

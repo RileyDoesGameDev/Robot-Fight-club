@@ -57,6 +57,9 @@ export default function create() {
   const bots = new Map();
   let scanCooldown = 0;
   let offReport = null;
+  let offWeapon = null;
+  /** weapon entity -> 0..1 of its target rpm, from battlebots.weaponState */
+  const spin = new Map();
 
   function nameOf(call, e) {
     const r = call("scene.getComponent", { entity: e, component: "Name" });
@@ -234,6 +237,10 @@ export default function create() {
       // Debug/HUD channel: anyone emitting `battlebots.requestReport` gets a
       // `battlebots.damageReport` back with the full health table. The in-match
       // HUD (T-6.11) reads the same channel, so this is not test-only scaffolding.
+      offWeapon = engine.mcp.on("battlebots.weaponState", (p) => {
+        if (p && typeof p.spinFraction === "number") spin.set(p.entity, p.spinFraction);
+      });
+
       offReport = engine.mcp.on("battlebots.requestReport", () => {
         const rows = [];
         for (const [ent, r] of parts) {
@@ -250,6 +257,7 @@ export default function create() {
 
     onDestroy() {
       if (offReport) { offReport(); offReport = null; }
+      if (offWeapon) { offWeapon(); offWeapon = null; }
     },
 
     onFixedUpdate({ engine, call, dt }) {
@@ -280,7 +288,7 @@ export default function create() {
         const excess = force - dmg.damageFloorN;
         if (excess <= 0) continue;
 
-        const strike = (striker, victim, victimEntity) => {
+        const strike = (striker, victim, victimEntity, strikerEntity) => {
           if (victim.state === "destroyed") return;
           let factor = dmg.weaponFactor.ram;
           if (striker.category === "weapon") {
@@ -289,6 +297,11 @@ export default function create() {
             factor = typeof f === "number" ? f : dmg.weaponFactor.ram;
             // A damaged weapon bites less hard (T-3.6).
             if (striker.state === "damaged") factor *= dmg.damagedWeaponRpmMultiplier;
+            // Scale by how fast the blade is actually turning. Its collider is the
+            // swept envelope, so it touches even at rest; a stopped blade is just a
+            // bar being shoved, and should do ram damage rather than weapon damage.
+            const frac = spin.has(strikerEntity) ? spin.get(strikerEntity) : 0;
+            factor = dmg.weaponFactor.ram + (factor - dmg.weaponFactor.ram) * frac;
           }
           const reduction = dmg.armorReduction[victim.armorTier] || 0;
           const amount = excess * dmg.damageScaleHpPerNs * factor * (1 - reduction) * dt;
@@ -298,6 +311,18 @@ export default function create() {
           const attacker = bots.get(striker.role);
           if (attacker) attacker.damageDealt += amount;
 
+          // A weapon that connects loses energy. Reported from here because this
+          // loop already knows the roles and the force — a weapon controller
+          // polling contacts itself would duplicate the whole filter.
+          if (striker.category === "weapon") {
+            engine.mcp.emit("battlebots.weaponHit", {
+              weapon: strikerEntity,
+              victim: victimEntity,
+              role: striker.role,
+              force,
+            });
+          }
+
           if (victim.hp <= 0) applyState(call, engine, victimEntity, victim, "destroyed");
           else if (victim.hp / victim.maxHp <= dmg.damagedAtHpFraction) {
             applyState(call, engine, victimEntity, victim, "damaged");
@@ -305,8 +330,8 @@ export default function create() {
         };
 
         // Each side strikes the other.
-        strike(A, B, c.b);
-        strike(B, A, c.a);
+        strike(A, B, c.b, c.a);
+        strike(B, A, c.a, c.b);
       }
     },
   };

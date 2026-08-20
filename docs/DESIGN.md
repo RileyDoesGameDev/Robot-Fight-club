@@ -316,6 +316,58 @@ Progressive weakening (T-5.5): a `damaged` part's joint `breakForce` is multipli
 
 ---
 
+### Weapons: the spinner (T-3.9)
+
+`game/scripts/WeaponController.ts`, attached by the assembler to any weapon whose
+PartDef declares an `axis` and a `targetRpm`. It drives the revolute joint's motor
+through `physics.setJointMotor` — the runtime path meant for per-step writes.
+
+States: `idle → spinup → ready`, plus `spindown` on release and `jammed` on stall.
+
+| Property | Measured |
+|---|---|
+| Spin-up | linear to **1396 of 1400 rpm in 2.4 s** — matches `spinUpSeconds` exactly |
+| Spin-down | linear 1396 → 1 rpm over **4.0 s** (`spinDownSeconds`) |
+| Hits on a facing target | **86** weapon hits in one engagement |
+| Blade contact force | 3.7–9.3 kN — under the 12 kN mount `breakForce`, so the blade stays on |
+
+**Collide the swept envelope, not the bar.** A 0.35 m blade at 1400 rpm moves its tip
+**0.85 m per fixed step** at 60 Hz. Rapier's CCD is translational, so it does not
+protect a *rotating* body: the bar teleports straight through a 0.6 m target. Measured
+with a bar-shaped collider:
+
+| target rpm | tip travel / step | weapon hits | peak force |
+|---|---|---|---|
+| 300 | 0.183 m | 2 | 13.8 kN |
+| 600 | 0.365 m | 0 | — |
+| 1000 | 0.608 m | 0 | — |
+| 1400 | 0.853 m | 0 | **132 kN** ← when it *did* resolve |
+
+Contact collapses past roughly 0.2 m of tip travel per step, and the rare resolved
+contact produces an impulse two orders of magnitude too large — which shears the
+mount instantly and launches both bots. Neither outcome is a game.
+
+So `wp-spinner-h` collides as a **cylinder of the blade's sweep radius** (r 0.35,
+half-height 0.03) while the visual stays a spinning bar. Contact is then continuous at
+any rpm and impulses stay in the single-digit kN range. Because the disc touches even
+when stopped, **damage scales by `spinFraction`** (actual rpm ÷ target): a dead blade
+does `ram` damage, a live one does full `weaponFactor`. The controller publishes that
+fraction on `battlebots.weaponState` and DamageSystem reads it.
+
+**Releasing the trigger is a scripted spin-down, not physics coast.** A velocity motor
+told to reach 0 rpm is a *brake* — release measured 1396 → 1 rpm in under a second —
+and `maxForce: 0` did not free the joint either. Ramping the command down over
+`spinDownSeconds` is deterministic, tunable, and reads correctly on screen.
+
+**Emergent: the spinner makes the bot veer.** Motor reaction torque yaws the chassis
+about 0.13 rad/s while the blade is spinning. Over a four-second straight-line drive
+that integrates into a ~30° heading error — enough to walk the bot into a wall, which
+is exactly what happened in early tests before steering was applied. This is real
+spinner-bot behaviour and is being kept: it is a skill demand on the player and a
+requirement on the AI (T-3.13), not a bug to damp out.
+
+---
+
 ## 6. Destruction (T-5.1 – T-5.6)
 
 **No fracture solver is needed.** `Joint.breakForce` ships natively (confirmed, T-1.13): the joint disconnects and emits `physics.jointBroken` when its solver impulse exceeds `breakForce × timestep`. The "custom breakable-joint system" in the proposal is therefore *configuration plus event handling*.
