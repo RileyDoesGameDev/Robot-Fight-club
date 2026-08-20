@@ -79,7 +79,8 @@ Derived from `Battle_Bots_Project_Proposal (1).docx`. Every task is written to b
 
 ### 1.3 Engine capability audit (de-risking)
 - [x] **T-1.13** **Confirmed:** the `Joint` component already ships `breakForce` (newtons; the joint disconnects and fires `physics.jointBroken` when its solver impulse exceeds `breakForce * timestep`). The "custom breakable-joint system" in the proposal is therefore mostly *configuration + event handling*, not a fracture solver. Update the proposal's risk framing accordingly.
-- [~] **T-1.14** **Confirmed:** `Collider.contactForceEventThreshold` (N) filters contact events — this is the damage signal source. Verify the `physics.contact` event payload shape (force magnitude, both entities, contact point/normal) via `events_listChannels` + `events_poll`. **(V)**
+- [x] **T-1.14** **Confirmed:** `Collider.contactForceEventThreshold` (N) filters contact events — this is the damage signal source. Verify the `physics.contact` event payload shape (force magnitude, both entities, contact point/normal) via `events_listChannels` + `events_poll`. **(V)**
+  - **Answered.** Event payload `{ a, b, started, point, normal, maxForce, force }`, verified live. It fires only on contact **begin/end**, so the damage system polls `physics.getContacts()` instead — live contacts refreshed every step, each with `maxForce` in newtons. Peak inter-bot force in a full-speed ram: **4311 N**. (Before the engine fixes, `maxForce` read 0 with any non-zero threshold; it reports correctly now.)
   - Field confirmed present (`Collider.contactForceEventThreshold`, newtons) and set to 400 on bot colliders. **Still to do:** verify the actual `physics.contact` payload shape via `events_listChannels` + `events_poll` during a real impact.
 - [ ] **T-1.15** Verify what a force-broken joint leaves behind: does the detached part stay a live dynamic body, and does the authored joint return on scene reload (docs say yes — a force-break is runtime state, not an edit)? This determines how match reset works. **(V) (R)**
 - [x] **T-1.16** Confirm whether `physics_*` MCP tools are exposed through the bridge in this build; if not, all physics reads/writes happen from scripts. Record which path the game uses.
@@ -144,6 +145,15 @@ Derived from `Battle_Bots_Project_Proposal (1).docx`. Every task is written to b
 - [>] **T-2.19** **Vertical-slice gate:** build a bot in the Workshop → launch it into `Arena01` → drive it. Loop closes end to end. **(V)**
   - **Superseded by T-2.23** — the gate is now *select* a bot, not build one. The Workshop half of this already works; only the scene hand-off was ever missing.
 
+### 2.5 Engine-fix follow-ups (added 2026-08-20)
+
+- [ ] **T-2.24** Migrate `BotAssembler.ts` and `WorkshopController.ts` off the old workarounds: use `ctx.call` instead of `engine.mcp.toolMap` (which was private and skipped zod defaults — the cause of the hidden-canvas bug), and `Script.params` instead of encoding arguments into `Name`. `BotDrive.ts` and `DamageSystem.ts` already use both.
+- [ ] **T-2.25** Delete `WorkshopController`'s 3-frame disable/re-enable rebuild machine — BUG-011 is fixed, so a Script-bearing entity can be deleted from inside a hook directly.
+- [ ] **T-2.26** Move input-map application out of `BotDrive.onStart` into a scene bootstrap. `input.mapAction` bindings are runtime-only and are not serialized, so *something* must re-apply them after every scene load; a bot is the wrong owner. Fold into T-6.2.
+- [ ] **T-2.27** Re-check point-light intensity now that blank captures are impossible: three.js 0.171 makes `point` intensity candela with inverse-square falloff, so the component default of 1 is effectively invisible at metre scale (`engine-fixes.md` LIM-003). Our scenes use directional + ambient only, so this is a look-pass item, not a bug.
+
+---
+
 ### 2.4 Bot Select — the new Create stage (added 2026-08-19)
 
 - [ ] **T-2.20** Author the prebuilt roster: 4–6 bots spanning the weight classes, each a `BotBlueprint` in `game/data/bots/`, each distinct enough to change how a match plays. Three exist (`player-slice`, `opp-wedge`, `opp-brick`) — they need companions with different weapons, not just different masses.
@@ -156,19 +166,27 @@ Derived from `Battle_Bots_Project_Proposal (1).docx`. Every task is written to b
 ## 3. Week 3 — Combat Prototype
 
 ### 3.1 Damage model
-- [ ] **T-3.1** Implement the `PartHealth` state: `hp`, `maxHp`, `state ∈ {intact, damaged, destroyed}`, `armorRating`.
-- [ ] **T-3.2** Write `scripts/DamageSystem.ts`: subscribe to contact/force events, convert impulse magnitude → damage, apply it to the struck part.
+- [x] **T-3.1** Implement the `PartHealth` state: `hp`, `maxHp`, `state ∈ {intact, damaged, destroyed}`, `armorRating`.
+  - In `DamageSystem.ts`: per part `hp`, `maxHp`, `state ∈ {intact, damaged, destroyed}`, `armorTier`. Held in the script's own Map keyed by entity — no component exists for it, and resetting on scene reload is exactly what a match restart wants (T-5.8).
+- [x] **T-3.2** Write `scripts/DamageSystem.ts`: subscribe to contact/force events, convert impulse magnitude → damage, apply it to the struck part.
+  - `game/scripts/DamageSystem.ts`. Polls contacts, filters to inter-bot pairs, converts force to damage, applies it to the struck part. Discovers bots by entity name, so it needs no per-bot wiring.
 - [x] **T-3.3** Define the damage formula: `damage = f(relativeVelocity, weaponMass, weaponType, armorRating)` with a minimum threshold so shoves don't chip armor. Tune per weapon later.
   - **Defined** in `docs/DESIGN.md` §5, constants in `game/data/damage.json`: energy-based, `damageFloorJ` 150 so shoves cannot chip armour, per-weapon `weaponFactor`, per-tier `armorReduction`. Unverified against real impacts until T-3.2 / T-3.11.
-- [ ] **T-3.4** Set `Collider.contactForceEventThreshold` per part so the event stream stays cheap — do **not** report every contact.
-- [ ] **T-3.5** Implement damage-state visuals: swap material/color or mesh at `damaged`, hide + detach at `destroyed`.
-- [ ] **T-3.6** Implement functional degradation: a `damaged` wheel loses torque, a `damaged` weapon spins slower, a `destroyed` wheel stops driving entirely. This is what makes damage matter more than a health bar.
-- [ ] **T-3.7** Implement the bot-level defeat condition: immobilized (all drive parts destroyed) or chassis HP zero → knockout.
-- [ ] **T-3.8** Add per-part collision groups (`Collider.collisionGroups`) so weapon damage colliders, chassis, and arena walls filter correctly and self-hits don't register.
+- [x] **T-3.4** Set `Collider.contactForceEventThreshold` per part so the event stream stays cheap — do **not** report every contact.
+  - Set to 400 N on every bot collider by the assembler, from `damage.json`. **One value for all parts** — per-category tuning is deferred until profiling says it matters; below the threshold the solver reports no force at all, which is what makes per-step polling cheap.
+- [x] **T-3.5** Implement damage-state visuals: swap material/color or mesh at `damaged`, hide + detach at `destroyed`.
+  - `damaged` tints the part; `destroyed` tints it dark **and drops its Joint** so it becomes free arena debris. Verified `joint=DETACHED`. Detaching rather than hiding is deliberate — a part that mechanically left the bot should be visible on the floor.
+- [x] **T-3.6** Implement functional degradation: a `damaged` wheel loses torque, a `damaged` weapon spins slower, a `destroyed` wheel stops driving entirely. This is what makes damage matter more than a health bar.
+  - **Measured:** one damaged wheel took `driveRight` 1 → **0.775** = (1 + 0.55)/2; one destroyed wheel took `driveLeft` 1 → **0.5**; two gone → **0**. Delivered through `Script.params` on the chassis, which `BotDrive` reads fresh each hook — the sanctioned cross-script channel now that per-instance params exist.
+- [x] **T-3.7** Implement the bot-level defeat condition: immobilized (all drive parts destroyed) or chassis HP zero → knockout.
+  - **Verified:** losing 3 of 4 wheels emitted `{ role: "player", reason: "immobilised" }`. Two implementation traps found and fixed while testing: defeat is re-checked on the periodic scan (not only on a damage transition, or a wheel culled as debris would never trigger it), and wheel count is a **high-water mark** (or a removed wheel would shrink the denominator instead of counting as a loss).
+- [x] **T-3.8** Add per-part collision groups (`Collider.collisionGroups`) so weapon damage colliders, chassis, and arena walls filter correctly and self-hits don't register.
+  - Role-based filtering in the damage system: same-bot pairs and arena geometry never damage anything. Deliberately **not** `Collider.collisionGroups` — masks would risk the bots' physical solidity against the floor and each other, and the filter is a single comparison.
 
 ### 3.2 Weapon vs. armor
 - [ ] **T-3.9** Implement the spinner weapon controller: spin-up ramp, RPM state, energy loss on impact, jam/stall state.
-- [ ] **T-3.10** Implement weapon-vs-armor interaction: armor reduces incoming damage, the weapon takes reaction damage on hits.
+- [~] **T-3.10** Implement weapon-vs-armor interaction: armor reduces incoming damage, the weapon takes reaction damage on hits.
+  - Armour reduction works and is measurable (the light-plate rammer takes more damage than the medium-plate defender). **Reaction damage falls out for free** — both sides of a contact take damage, so ramming face-first hurts your own plate. Still missing: weapon-specific interaction, which needs the spinner controller (T-3.9).
 - [ ] **T-3.11** Verify big hits produce plausible physics reaction (knockback, spin-out) rather than jitter or explosive launches. **(V) (R)**
 
 ### 3.3 First AI opponent (scripted)
@@ -232,7 +250,8 @@ Derived from `Battle_Bots_Project_Proposal (1).docx`. Every task is written to b
 - [ ] **T-5.2** Subscribe to `physics.jointBroken` and drive the detachment sequence: mark the part detached, sever its logical link to the bot, spawn VFX, play audio.
 - [ ] **T-5.3** Handle the detached body's lifetime: it stays dynamic and interactive, becomes arena debris, and is culled after N seconds or M debris pieces to protect the frame budget.
 - [ ] **T-5.4** Make detachment mechanically meaningful: lost wheel → lost drive on that side; lost weapon → no attack; lost armor → exposed hitbox.
-- [ ] **T-5.5** Add progressive weakening — a `damaged` part's joint `breakForce` is reduced so accumulated hits eventually shear it off.
+- [x] **T-5.5** Add progressive weakening — a `damaged` part's joint `breakForce` is reduced so accumulated hits eventually shear it off.
+  - A part reaching `damaged` has its joint `breakForce` multiplied by `damagedBreakForceMultiplier` (0.5), so accumulated hits shear it off sooner.
 - [ ] **T-5.6** Curate the breakable set explicitly (proposal scope cut): wheels, weapon head, armor plates. **Not** every part, and **no** free-fracture.
 - [ ] **T-5.7** Verify a bot mid-disassembly stays physically stable — no NaN transforms, no exploding joints. Run `scene_validate` during play. **(V) (R)**
 - [ ] **T-5.8** Verify match reset restores all authored joints and part health cleanly (depends on T-1.15). **(V)**

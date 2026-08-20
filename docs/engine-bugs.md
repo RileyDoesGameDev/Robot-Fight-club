@@ -7,6 +7,73 @@ the engine *correctly*; this file is what should be fixed.
 
 Engine source referenced: `C:\Users\KOBI 2\Documents\Kobi\3d-game-engine-mcp-native`.
 
+---
+
+## ✅ All closed — 2026-08-20
+
+Every one of the 12 BUG entries and 3 of the 5 LIM entries below has been fixed.
+See [engine-fixes.md](../engine-fixes.md) for what changed and what to re-test.
+The entries are kept as filed, because the reasoning and repros are still the
+record of how each was found.
+
+Confirmed working on our side after the fixes:
+
+- `ctx.call` replaced the `toolMap` workaround in `BotDrive`; `physics.*` is on
+  the bridge; `maxStringChars` returned a 10 KB scene in one call instead of 12
+  chunks; `scene.validate`'s new geometry checks **found a real bug in our own
+  data** (wheels drawn 0.08 m thick but colliding as a 0.24 m sphere — 3×
+  divergence, now fixed).
+- Two of the fixes changed our design directly: the damage model became
+  force-based because contact force is now reported reliably, and
+  `WorkshopController`'s 3-frame state machine became redundant.
+
+Three decisions were handed back to us. Answers below.
+
+### BUG-002 — should `applyTorque` become continuous? **No — add a verb instead**
+
+Keep `physics.applyTorque` exactly as it is. The behaviour was never wrong, only
+undocumented, and that is now fixed.
+
+Making it continuous is a silent 60× magnitude change for every existing caller,
+and the failure mode is "the bot spins wildly" — the same class of bug that BUG-001
+and BUG-002 already cost days on. Our `BotDrive` sizes `TURN_TORQUE` in N·m and
+converts at the call site; that line would keep compiling and start lying.
+
+If the asymmetry is worth closing, close it **additively**: add
+`physics.applyTorqueContinuous` (N·m, per-step, mirroring `applyForce`) and leave
+`applyTorque` meaning what it means today. Nobody breaks, and the namespace ends up
+coherent. A rename buys tidiness at the cost of a class of bug that is genuinely
+hard to spot.
+
+### LIM-002 — scripts importing each other: **real ESM, but not yet**
+
+Don't build it now. `ctx.call` and `Script.params` removed both reasons we routed
+everything through a spawner marker, and we have no duplicated logic left that
+imports would delete — the marker indirection is now a *data-driven* choice we would
+keep anyway.
+
+When it is built, build the **real-ESM-over-blob-URLs** option. "Scripts can import
+each other" implies one module instance and shared state; bundle-per-script would
+hand two behaviours two copies of the same counter, which is a bug generator that
+looks like working code. Better to not have imports than to have ones that lie
+about identity.
+
+The concrete trigger to revisit: **week 4's weapon controllers** (T-4.1 – T-4.5),
+where four weapon types will want to share spin-up/jam/cooldown math. That is the
+first genuine shared-library need on our roadmap. If it lands before then we will
+use it; if not, one controller with a switch is an acceptable stand-in.
+
+### LIM-004 — `createOnDisk` sidecar: **don't build it for us**
+
+The repo-as-source-of-truth workflow works, is committed, and gives us history and
+diffs that a disk-backed project would not add to. A `POST /project` endpoint that
+writes arbitrary host paths is a new trust surface for a convenience we have already
+paid for another way.
+
+If it is built for other users, gate it on a rooted, allowlisted base directory with
+path containment — an MCP verb that can write anywhere on the host is worth more
+caution than the ergonomics justify. For Battle Bots: keep the export step.
+
 **Severity:** 🔴 blocker/data-corrupting · 🟠 wrong behaviour with a workaround · 🟡 papercut / docs
 
 ---

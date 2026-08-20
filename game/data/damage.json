@@ -1,13 +1,14 @@
 {
-  "$comment": "damage = clamp(impactEnergyJ * weaponFactor * (1 - armorReduction)) * scale, floored.",
-  "damageFloorJ": 150,
-  "damageScaleHpPerJ": 0.02,
+  "$comment": "Force-based. The solver already reports contact force (physics.getContacts .maxForce, newtons), so damage is a RATE over the excess above a floor rather than an energy derived from velocities — deriving energy would duplicate what the solver computed. damage = max(0, maxForce - damageFloorN) * damageScaleHpPerNs * weaponFactor * (1 - armorReduction) * dt",
+  "damageFloorN": 600,
+  "damageScaleHpPerNs": 0.02,
   "weaponFactor": {
     "spinnerHorizontal": 1,
     "drumVertical": 0.9,
     "hammer": 1.3,
     "flipper": 0.3,
-    "wedge": 0.15
+    "wedge": 0.15,
+    "ram": 0.5
   },
   "armorReduction": {
     "none": 0,
@@ -19,5 +20,6 @@
   "damagedBreakForceMultiplier": 0.5,
   "damagedDriveTorqueMultiplier": 0.55,
   "damagedWeaponRpmMultiplier": 0.6,
-  "contactForceEventThresholdN": 400
+  "contactForceEventThresholdN": 400,
+  "debrisLifetimeSeconds": 12
 }

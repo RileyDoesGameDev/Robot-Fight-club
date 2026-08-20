@@ -231,26 +231,77 @@ Honest caveat: the greybox bot **cannot rest fully inverted** — with wheels on
 ## 5. Damage model (T-3.1 – T-3.3)
 
 Discrete component health, per the adopted proposal decision — not free-fracture.
+Implemented in `game/scripts/DamageSystem.ts`.
 
 State per part: `intact → damaged → destroyed`, with `damaged` at **≤ 50 % HP**.
 
+### Force-based, not energy-based (revised 2026-08-20)
+
+The original formula derived impact energy from relative velocity and mass. That
+was replaced once the engine was reporting contact force reliably: the solver has
+already computed the force, so re-deriving energy from velocities duplicates its
+work and disagrees with it at the margins.
+
 ```
-impactEnergyJ  = ½ · effectiveMass · relativeVelocity²
-raw            = impactEnergyJ · weaponFactor · (1 − armorReduction)
-damage         = raw < damageFloorJ ? 0 : raw · damageScaleHpPerJ
+excess  = max(0, maxForce − damageFloorN)          // maxForce from physics.getContacts, newtons
+dps     = excess · damageScaleHpPerNs · weaponFactor · (1 − armorReduction)
+damage  = dps · dt                                 // a RATE, so sustained contact accumulates
 ```
+
+Because it is a rate rather than a per-impact lump, a spinner grinding along a
+plate keeps doing damage — which a per-collision model would miss entirely.
 
 Constants live in `game/data/damage.json` so tuning never needs a recompile:
 
 | Knob | Value |
 |---|---|
-| `damageFloorJ` | 150 — shoves must not chip armour |
-| `damageScaleHpPerJ` | 0.02 → a 3000 J hit ≈ 60 HP pre-armour |
-| `weaponFactor` | spinner 1.0, drum 0.9, hammer 1.3, flipper 0.3, wedge 0.15 |
+| `damageFloorN` | 600 — shoving and resting contact must not chip armour |
+| `damageScaleHpPerNs` | 0.06 — **tuned**, see the measurements below |
+| `weaponFactor` | spinner 1.0, drum 0.9, hammer 1.3, flipper 0.3, wedge 0.15, **ram 0.5** |
 | `armorReduction` | light 0.15, medium 0.30, heavy 0.45 |
-| `contactForceEventThresholdN` | 400 — below this, no contact event is even emitted |
+| `contactForceEventThresholdN` | 400 — below this the solver reports no force at all |
 
-The damage signal source is **`Collider.contactForceEventThreshold`** (confirmed present, T-1.14) feeding `physics.contact`. Setting it per part is what keeps the event stream affordable (T-3.4).
+`ram` is the factor for a striker that is not a weapon, so shoving is a real but
+weak attack. The **striking** part sets `weaponFactor`; the **struck** part's own
+tier sets `armorReduction`.
+
+### Signal: poll contacts, don't listen for them (T-1.14 answered)
+
+`physics.contact` fires only on contact **begin/end** — verified. A grinding
+weapon would therefore damage once and then never again. So DamageSystem polls
+`physics.getContacts()` each fixed step instead, which returns live contacts
+refreshed every step with `maxForce` in newtons.
+
+Payload, confirmed live: `{ a, b, started, point, normal, maxForce, force }` for the
+event; `{ a, b, point, normal, maxForce, force }` for a polled record.
+
+`Collider.contactForceEventThreshold` = 400 N is what makes polling cheap: under
+it the solver reports no force, so resting and rolling contacts are free to skip.
+
+### What counts as a hit (T-3.8)
+
+Only **inter-bot** pairs. Same-bot pairs and arena geometry never damage anything,
+filtered by the role encoded in each entity's name. Deliberately *not* done with
+`Collider.collisionGroups`: masks would risk the bots' physical solidity against
+the floor and each other, and the filter is one comparison.
+
+### Measured (2026-08-20)
+
+| Property | Result |
+|---|---|
+| Peak inter-bot contact force, full-speed ram | **4311 N** |
+| Damage per ram to a light plate (90 hp) | **≈ 12 hp** → damaged in 4 rams, destroyed in ~8 |
+| `damaged` transition | fired at 41.7/90 hp (46 %) |
+| Destroyed part | `joint=DETACHED` — becomes free arena debris |
+| Drive degradation, one damaged wheel | `driveRight` 1 → **0.775** = (1 + 0.55)/2 |
+| Drive degradation, one destroyed wheel | `driveLeft` 1 → **0.5** = (0 + 1)/2 |
+| Knockout, 3 of 4 wheels lost | `{ role: "player", reason: "immobilised" }` |
+| New console errors across all runs | **0** |
+
+Reaction damage (T-3.10) falls out for free: both sides of a contact take damage,
+so a bot that rams face-first hurts its own front plate. The player's plate
+consistently took more damage than the opponent's, which is the armour tiers
+working — light 0.15 vs medium 0.30 reduction.
 
 ### Functional degradation (T-3.6) — what makes damage matter
 

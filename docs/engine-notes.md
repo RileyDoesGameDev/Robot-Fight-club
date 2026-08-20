@@ -1,5 +1,29 @@
 # SMPL-Engine notes for Battle Bots
 
+> ## ⚠️ Largely superseded — 2026-08-20
+> The engine team fixed every bug this file was working around (see
+> [engine-fixes.md](../engine-fixes.md)). **Read this file for history, not for
+> instructions.** The corrections that matter:
+>
+> | This file says | Now do instead |
+> |---|---|
+> | Reach physics via `engine.mcp.toolMap` handlers | **`ctx.call(tool, args)`** — synchronous, zod-parsed, undo-aware. `toolMap` was private all along, which is why it silently skipped schema defaults. |
+> | `physics.applyForce` latches, never use it | Fixed — force is genuinely per-step now. We still use impulses, but by choice, not necessity. |
+> | Encode script parameters in the `Name` component | **`Script.params`**, read as `ctx.params`. |
+> | Never delete a Script entity from a hook | Fixed — delete it directly. The 3-frame toggle in `WorkshopController` is now redundant. |
+> | Slice long `script.eval` strings into <1000-char chunks | Raise **`maxStringChars`**. |
+> | `physics.*` is absent from the bridge catalog | Present. It answers with a clear `isError` until the first play-mode enable. |
+> | A blank `captureScreenshot` PNG means check your lighting | It now refuses with a reason instead of writing a blank file. |
+>
+> Still true and still worth reading: §4 (moving a dynamic body), §5 (colliders
+> ignore `Transform.scale` — now also caught by `scene.validate`), and §6
+> (physics only exists after play mode has been on once).
+>
+> **One gap that is ours, not the engine's:** `input.mapAction` bindings are
+> runtime-only and are **not** serialized with a scene, so nothing restores them
+> after a load. `BotDrive` now applies `inputMap` from the bundle on start. A
+> proper bootstrap belongs with the scene-flow work (T-6.2).
+
 Engine behaviour discovered while building week 1, verified against the engine source at
 `C:\Users\KOBI 2\Documents\Kobi\3d-game-engine-mcp-native` and by measurement in the live editor.
 These are the things that cost time to find. Read this before writing a new gameplay script.

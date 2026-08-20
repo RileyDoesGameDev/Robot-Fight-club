@@ -1,32 +1,33 @@
 /**
  * BotDrive — tank-style drivetrain for a Battle Bots chassis. (T-1.8)
  *
- * DRIVETRAIN MODEL (T-1.7 decision):
- *   Propulsion is applied to the CHASSIS body directly, as a per-step impulse.
- *   Wheels are real dynamic bodies on breakable fixed joints, but they do NOT
- *   propel — they exist so they can be damaged and sheared off (T-5.4), and a
- *   lost wheel is modelled as a torque/force multiplier via `driveScale`.
- *   Rejected alternative: revolute wheel joints with velocity motors. More
- *   physically honest, but it adds four motorised constraints of solver work per
- *   bot and couples drive feel to joint stiffness. Revisit only if traction
- *   nuance turns out to matter more than the frame budget (see T-1.17).
+ * DRIVETRAIN MODEL (T-1.7 decision)
+ *   Propulsion is a per-step IMPULSE on the chassis body. Wheels are real dynamic
+ *   bodies on breakable fixed joints, but they do NOT propel — they exist so they
+ *   can be damaged and sheared off (T-5.4). A lost or damaged wheel shows up as a
+ *   per-side multiplier, not as a change in traction.
+ *   Rejected: revolute wheel joints with velocity motors — four extra motorised
+ *   constraints per bot, and drive feel coupled to joint stiffness.
  *
- * PHYSICS ACCESS (T-1.16):
- *   The `physics.*` MCP tools are NOT exposed over the editor bridge in this
- *   build, so scripts are the only path to Rapier. `engine.mcp.callTool` is
- *   async and therefore unusable inside a fixed step — instead we resolve the
- *   SYNCHRONOUS handlers out of `engine.mcp.toolMap` once in onStart and call
- *   them directly each step. Calling a handler directly skips zod parsing, so
- *   every argument must be passed explicitly (no schema defaults apply).
+ * DEGRADATION CHANNEL (T-3.6)
+ *   `ctx.params.driveLeft` / `driveRight` (0..1) scale each track. DamageSystem
+ *   writes them with `scene.setComponent` on this entity's Script component;
+ *   params are read fresh every hook, so it lands on the next tick with no
+ *   reattach. That is the sanctioned cross-script channel now that per-instance
+ *   params exist — no custom events, no encoding state into `Name`, and it
+ *   serializes with the scene.
  *
- * WHY IMPULSES, NOT FORCES (engine gotcha, KB worth remembering):
- *   `physics.applyForce` maps to Rapier's `body.addForce`, and the engine never
- *   calls `resetForces()`. The force therefore LATCHES and accumulates across
- *   every subsequent step — calling it once per frame ramps a body to hundreds
- *   of m/s within a second. Its description ("for the next step") is wrong.
- *   `applyImpulse` / `applyTorqueImpulse` are per-step and are what a drivetrain
- *   wants. Impulse = force x dt, so the tuning constants below stay in N / N·m
- *   and are converted at the call site.
+ * PHYSICS ACCESS
+ *   `ctx.call(tool, args)` — synchronous, zod-parsed, undo-aware. This replaces
+ *   the old `engine.mcp.toolMap` workaround, which reached into a private field
+ *   and silently skipped schema defaults.
+ *
+ * WHY IMPULSES, NOT FORCES
+ *   `physics.applyForce` is now genuinely per-step (the accumulator is cleared
+ *   after each step), so it would work — but a drivetrain wants an impulse it can
+ *   size directly, and `applyTorque` is a torque *impulse* (N·m·s) regardless. We
+ *   use impulses for both so the two axes are expressed in the same terms.
+ *   Impulse = force x dt, converted at the call site.
  */
 
 // Tuning — named constants so the numbers stay reviewable (T-1.10).
@@ -38,6 +39,8 @@ const SELF_RIGHT_IMPULSE = 700;  // N·s upward kick used to un-flip
 const SELF_RIGHT_TORQUE = 1600;  // N·m·s roll torque paired with the kick
 const SELF_RIGHT_COOLDOWN = 2.0; // s
 const UPRIGHT_DOT = 0.35;        // up.y below this means flipped
+
+const BUNDLE_PATH = "/data/bundle.json";
 
 /** Rotate vector v by quaternion q (x,y,z,w). */
 function rotate(q, v) {
@@ -55,28 +58,43 @@ function rotate(q, v) {
 
 export default function create() {
   let selfRightTimer = 0;
-  let applyImpulse = null;
-  let applyTorque = null;
-  let bodyState = null;
+  let bindingsReady = false;
 
   /**
-   * Per-side drive authority, 0..1. The damage system lowers these as wheels
-   * are damaged or sheared off (T-3.6 / T-5.4); nothing writes them yet.
+   * Input action bindings are RUNTIME state — `input.mapAction` is not serialized
+   * with the scene, so a scene load leaves the editor's defaults and none of this
+   * game's actions. Applying them here keeps a bot self-sufficient. A proper
+   * bootstrap belongs with the scene-flow work (T-6.2); until then this is its home.
    */
-  const driveScale = { left: 1, right: 1 };
+  function ensureBindings(call, engine) {
+    if (bindingsReady) return;
+    bindingsReady = true;
+    const existing = call("input.listActions", {}).content || [];
+    if (existing.some((a) => a.action === "drive.forward")) return;
+    let map = null;
+    try {
+      map = JSON.parse(call("project.readFile", { path: BUNDLE_PATH }).content.text).inputMap.player1;
+    } catch (err) {
+      map = null;
+    }
+    if (!map) return;
+    for (const action of Object.keys(map)) {
+      call("input.mapAction", { action, codes: map[action] });
+    }
+    engine.console.log("[BotDrive] applied " + Object.keys(map).length + " input bindings");
+  }
 
   return {
-    onStart({ engine }) {
-      const tm = engine.mcp.toolMap;
-      applyImpulse = tm.get("physics.applyImpulse").handler;
-      applyTorque = tm.get("physics.applyTorque").handler;
-      bodyState = tm.get("physics.bodyState").handler;
+    onStart({ engine, call }) {
+      ensureBindings(call, engine);
     },
 
-    onFixedUpdate({ entity, engine, dt }) {
-      if (!bodyState) return;
-      const body = bodyState({ entity }).content;
-      if (!body) return;
+    onFixedUpdate({ entity, engine, call, dt, params }) {
+      const res = call("physics.bodyState", { entity });
+      // Before the first play-mode enable the physics provider answers with an
+      // isError whose content is a string, not a body — guard on the shape.
+      const body = res && !res.isError ? res.content : null;
+      if (!body || !body.rotation) return;
 
       const q = [body.rotation.x, body.rotation.y, body.rotation.z, body.rotation.w];
       const forward = rotate(q, [0, 0, -1]); // chassis nose is -Z
@@ -84,7 +102,7 @@ export default function create() {
       const input = engine.input;
 
       // --- tank drive -------------------------------------------------------
-      // Input is collapsed to left/right track throttle, then recombined into a
+      // Input collapses to left/right track throttle, then recombines into a
       // forward and a yaw component, so a future two-stick mapping and this
       // keyboard mapping drive the exact same code path.
       const fwdAxis =
@@ -92,8 +110,10 @@ export default function create() {
       const turnAxis =
         (input.actionHeld("turn.right") ? 1 : 0) - (input.actionHeld("turn.left") ? 1 : 0);
 
-      const left = Math.max(-1, Math.min(1, fwdAxis + turnAxis)) * driveScale.left;
-      const right = Math.max(-1, Math.min(1, fwdAxis - turnAxis)) * driveScale.right;
+      const scaleL = typeof params.driveLeft === "number" ? params.driveLeft : 1;
+      const scaleR = typeof params.driveRight === "number" ? params.driveRight : 1;
+      const left = Math.max(-1, Math.min(1, fwdAxis + turnAxis)) * scaleL;
+      const right = Math.max(-1, Math.min(1, fwdAxis - turnAxis)) * scaleR;
       const drive = (left + right) * 0.5;
       const yaw = (right - left) * 0.5;
 
@@ -108,14 +128,14 @@ export default function create() {
 
       if (grounded && drive !== 0) {
         const j = DRIVE_FORCE * drive * speedFade * dt;
-        applyImpulse({
+        call("physics.applyImpulse", {
           entity,
           impulse: { x: forward[0] * j, y: forward[1] * j, z: forward[2] * j },
         });
       }
 
       if (grounded && yaw !== 0) {
-        applyTorque({
+        call("physics.applyTorque", {
           entity,
           torque: { x: 0, y: TURN_TORQUE * yaw * yawFade * dt, z: 0 },
         });
@@ -125,10 +145,10 @@ export default function create() {
       if (selfRightTimer > 0) selfRightTimer -= dt;
       if (!grounded && selfRightTimer <= 0 && input.actionHeld("bot.selfRight")) {
         selfRightTimer = SELF_RIGHT_COOLDOWN;
-        applyImpulse({ entity, impulse: { x: 0, y: SELF_RIGHT_IMPULSE, z: 0 } });
+        call("physics.applyImpulse", { entity, impulse: { x: 0, y: SELF_RIGHT_IMPULSE, z: 0 } });
         // Roll about the chassis' own long axis so the kick has a direction.
         const axis = rotate(q, [0, 0, 1]);
-        applyTorque({
+        call("physics.applyTorque", {
           entity,
           torque: {
             x: axis[0] * SELF_RIGHT_TORQUE,
