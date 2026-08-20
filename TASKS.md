@@ -237,7 +237,25 @@ Derived from `Battle_Bots_Project_Proposal (1).docx`. Every task is written to b
   - Shipped in the data model: `ar-light` 6 kg / 90 hp / 0.15 reduction, `ar-med` 12 kg / 140 hp / 0.30, `ar-heavy` 20 kg / 200 hp / 0.45 (`game/data/parts/`, reductions in `damage.json`).
 - [x] **T-4.8** Define weight classes with mass caps; the Workshop blocks saving an over-cap bot.
   - Caps 60 / 110 / 180 kg in `game/data/weight-classes.json`; `validate.js` fails an over-cap blueprint at authoring time, and the Workshop refuses the save (verified at 204 kg).
-- [ ] **T-4.9** First balance pass: verify no single weapon dominates every matchup. Log matchup results in a table. **(V)**
+- [x] **T-4.9** First balance pass: verify no single weapon dominates every matchup. Log matchup results in a table. **(V)**
+  - Round-robin over the six weapon archetypes (bar spinner, drum, axe, flipper, passive wedge, no weapon) — 15 matchups, 60 s each, **AI on both sides**. The player bot has no brain of its own, so the harness attaches one exactly the way BotAssembler does for the opponent; a matchup where one side cannot move is not a balance reading.
+  - **The headline holds: no weapon dominates every matchup.** The only lopsided result is the bar spinner against a passive wedge (282 vs 87), which is the intended rock-paper-scissors.
+
+    | Matchup | damage dealt | ended |
+    |---|---|---|
+    | Ravager (bar) v Havoc (drum) | 97 – 96 | — |
+    | Ravager (bar) v Tipster (flipper) | 206 – 199 | immobilised |
+    | Ravager (bar) v Doorstop (wedge) | **282 – 87** | chassis destroyed |
+    | Gavel (axe) v Tipster (flipper) | 120 – 116 | — |
+    | Tipster (flipper) v Doorstop (wedge) | 280 – 277 | chassis destroyed |
+    | Tipster (flipper) v Anvil (none) | 156 – 162 | — |
+    | Doorstop (wedge) v Anvil (none) | 94 – 103 | — |
+
+  - **A real bug fell out of it, and it was mine.** The first run ended **8 of 15 matchups in a pit**, one after 4.6 s, which made every damage reading meaningless. Cause: T-5.12 made the pit lethal, but the AI's pit veto was geometrically incapable of firing in time. `hazardRadiusM` was 2.4 and the veto tripped at `hazardNear > 0.55`, i.e. **1.08 m from a pit centre** — while the nearest corner of the pit *mouth* is already **1.41 m** out from that centre. The bot was over the hole before it could react. Raising the radius to 4.0 and moving the threshold into data as `pitVetoAt: 0.35` makes it fire at 2.6 m, about 1.2 m of margin, which is roughly the braking distance at cruising speed. **Pit endings fell to 6 of 15** and the damage numbers became usable. **(V)**
+  - **Two findings carried into T-7.4**, not silently fixed here:
+    1. Most pairings come out nearly symmetric (97–96, 206–199, 280–277). That says mutual ram and contact damage is swamping weapon differentiation — the weapons are distinct in *feel* and in how they win, but not yet in how much damage they account for.
+    2. Anything involving **Anvil** (no weapon, heavy, defensive) produces very little damage on either side (5–6, 9–2). A bot with nothing to attack with also gives the AI very little reason to close, so those matches stall. Anvil may need a reason to engage, or the defensive weights may need a floor.
+  - The remaining 6 pit endings are **not all failures**: `push-to-hazard` is a designed, scored AI action, so shoving someone into a corner is a win condition working as intended. Separating deliberate shoves from self-inflicted falls needs the telemetry from real playtests (T-7.1, T-7.5).
 - [x] **T-4.10** Add motor/drivetrain parts as a real tradeoff (speed vs. torque vs. mass).
   - The three motor PartDefs have existed since week 2 and their stats were **completely inert**: `driveForceMultiplier`, `turnTorqueMultiplier` and `maxSpeedMultiplier` were authored, validated by `validate.js`, and read by nothing. Fitting a Sprint drive or a Grinder drive changed only the bot's mass.
   - BotAssembler now resolves the fitted motor at assembly time and writes those three numbers into BotDrive's params; BotDrive scales its drive impulse, its yaw torque and its speed cap by them. Resolved at assembly rather than looked up inside BotDrive because the assembler is the only thing that knows the blueprint, and it keeps BotDrive a pure actuator with a single tuning source. A bot with no motor fitted falls back to 1.0 rather than being undrivable.

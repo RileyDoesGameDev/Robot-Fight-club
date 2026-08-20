@@ -300,7 +300,7 @@ export default function create() {
     const scores = ACTIONS.map((a) => ({ id: a.id, score: scoreOf(a.id, state.cons) }));
 
     // Pit veto: anything that drives forward while we are on a lip loses to retreat.
-    if (state.cons.hazardNear > 0.55) {
+    if (state.cons.hazardNear > tune.pitVetoAt) {
       for (const s of scores) if (s.id !== "retreat") s.score -= 2;
     }
 
