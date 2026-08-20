@@ -1,0 +1,46 @@
+{
+  "name": "Gavel",
+  "blurb": "Heavyweight axe on a torque drive. One swing a second, and the swing is the hardest single hit in the game.",
+  "chassisId": "ch-brick-h",
+  "paint": {
+    "primary": "#7a4b1f",
+    "secondary": "#c9c9c9"
+  },
+  "attachments": [
+    {
+      "socketId": "wheel_fl",
+      "partId": "wh-l"
+    },
+    {
+      "socketId": "wheel_fr",
+      "partId": "wh-l"
+    },
+    {
+      "socketId": "wheel_rl",
+      "partId": "wh-l"
+    },
+    {
+      "socketId": "wheel_rr",
+      "partId": "wh-l"
+    },
+    {
+      "socketId": "weapon_top",
+      "partId": "wp-hammer-a"
+    },
+    {
+      "socketId": "armor_front",
+      "partId": "ar-med"
+    },
+    {
+      "socketId": "motor_bay",
+      "partId": "mt-torque"
+    }
+  ],
+  "derived": {
+    "totalMassKg": 152,
+    "weightClass": "heavy",
+    "armorTotal": 140,
+    "weaponRating": 160
+  },
+  "aiPersonality": "opportunist"
+}

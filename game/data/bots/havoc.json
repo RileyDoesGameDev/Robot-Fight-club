@@ -1,0 +1,46 @@
+{
+  "name": "Havoc",
+  "blurb": "Middleweight drum. Spins up in under two seconds and lifts whatever it touches - it will not one-shot you, it will just never stop.",
+  "chassisId": "ch-box-m",
+  "paint": {
+    "primary": "#2f6f8f",
+    "secondary": "#e0e0e0"
+  },
+  "attachments": [
+    {
+      "socketId": "wheel_fl",
+      "partId": "wh-m"
+    },
+    {
+      "socketId": "wheel_fr",
+      "partId": "wh-m"
+    },
+    {
+      "socketId": "wheel_rl",
+      "partId": "wh-m"
+    },
+    {
+      "socketId": "wheel_rr",
+      "partId": "wh-m"
+    },
+    {
+      "socketId": "weapon_top",
+      "partId": "wp-drum-v"
+    },
+    {
+      "socketId": "armor_front",
+      "partId": "ar-med"
+    },
+    {
+      "socketId": "motor_bay",
+      "partId": "mt-balanced"
+    }
+  ],
+  "derived": {
+    "totalMassKg": 108,
+    "weightClass": "middle",
+    "armorTotal": 140,
+    "weaponRating": 170
+  },
+  "aiPersonality": "aggressive"
+}

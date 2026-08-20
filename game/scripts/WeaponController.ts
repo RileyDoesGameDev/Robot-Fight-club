@@ -20,6 +20,24 @@
  *   but rewrites the authored array every frame, and the physics system would
  *   reconcile a constraint change each time.
  *
+ * TWO MODES, ONE INTERFACE (T-4.5)
+ *   `stats.mode` picks the actuator. Everything else about a weapon — how it is
+ *   commanded, what it reports, how the damage model reads it — is identical, which
+ *   is what lets the AI and the input layer treat all four weapons the same way.
+ *
+ *     spin   (T-3.9, T-4.1)  a revolute VELOCITY motor held at `targetRpm`.
+ *                            Horizontal bar spinner and vertical drum.
+ *     swing  (T-4.2, T-4.3)  a revolute POSITION motor driven between
+ *                            `restAngleRad` and `strikeAngleRad`. Axe and flipper.
+ *     (none)                 a passive wedge gets no controller at all — it wins on
+ *                            geometry (T-4.4), and there is nothing to actuate.
+ *
+ *   The shared contract is `battlebots.weaponState.spinFraction`: 0..1 of "how live
+ *   is this weapon right now". DamageSystem scales weapon damage by it and knows
+ *   nothing about modes. For a spinner that is rpm over target; for a swing weapon
+ *   it is 1 during the strike stroke and 0 otherwise, so an axe hits hard for the
+ *   ~0.16 s it is falling and is a bar of metal the rest of the time.
+ *
  * STATE MACHINE
  *   idle ──command──▶ spinup ──at speed──▶ ready
  *     ▲                 │                   │
@@ -65,7 +83,11 @@ export default function create() {
   let jointId = -1;
   let axis = [0, 1, 0];
 
-  let state = "idle";       // idle | spinup | ready | jammed
+  let mode = "spin";        // spin | swing
+  let state = "idle";       // idle | spinup | ready | jammed | cocked | striking | recovering
+  let swingTimer = 0;       // seconds left in the current swing phase
+  let cooldown = 0;         // seconds until the next strike is allowed
+  let wasCommanded = false; // edge detection: a swing fires on press, not on hold
   let commandedRpm = 0;     // what we are asking for, before motor slip
   let jamTimer = 0;
   let commandTime = 0;      // how long we have been commanded to spin
@@ -115,6 +137,22 @@ export default function create() {
     });
   }
 
+  /**
+   * Drive the arm to an angle (T-4.2, T-4.3). A POSITION motor rather than a
+   * velocity one: a swing weapon is defined by where it starts and where it stops,
+   * and asking for an angle lets the solver do the acceleration.
+   */
+  function writeAngle(call, radians, force) {
+    if (jointId < 0) return;
+    call("physics.setJointMotorPosition", {
+      joint: jointId,
+      targetPosition: radians,
+      maxForce: force != null ? force : (stats.motorMaxForce != null ? stats.motorMaxForce : 2000),
+      stiffness: stats.motorStiffness != null ? stats.motorStiffness : 900,
+      damping: stats.motorDamping != null ? stats.motorDamping : 60,
+    });
+  }
+
   /** Ceiling on commanded speed, given this weapon's own damage state. */
   function ceilingRpm() {
     if (partState === "destroyed") return 0;
@@ -130,10 +168,15 @@ export default function create() {
       stats = (def && def.stats) || {};
       if (stats.axis) axis = stats.axis;
 
+      mode = stats.mode === "swing" ? "swing" : "spin";
       jointId = findJoint(call, entity);
       state = "idle";
       commandedRpm = 0;
-      writeMotor(call, 0);
+      swingTimer = 0;
+      cooldown = 0;
+      wasCommanded = false;
+      if (mode === "swing") writeAngle(call, stats.restAngleRad != null ? stats.restAngleRad : 0);
+      else writeMotor(call, 0);
 
       offHit = engine.mcp.on("battlebots.weaponHit", (p) => {
         if (!p || p.weapon !== entity) return;
@@ -148,7 +191,10 @@ export default function create() {
       });
 
       engine.console.log("[Weapon] " + (params.role || "?") + " " + params.partId
-        + " ready — joint " + jointId + ", target " + stats.targetRpm + " rpm");
+        + " ready — joint " + jointId + ", mode " + mode
+        + (mode === "swing" ? ", arc " + (stats.restAngleRad || 0).toFixed(2) + " -> "
+            + (stats.strikeAngleRad || 0).toFixed(2) + " rad"
+          : ", target " + stats.targetRpm + " rpm"));
     },
 
     onDestroy() {
@@ -175,6 +221,60 @@ export default function create() {
         : params.autoSpin === true
           ? partState !== "destroyed"
           : engine.input.actionHeld(params.action || "weapon.primary");
+
+      // ── swing weapons (T-4.2, T-4.3) ─────────────────────────────────
+      // A distinct cycle rather than a special case of the spin machine: a hammer
+      // has no notion of "at speed", and a jam means nothing to it.
+      if (mode === "swing") {
+        const rest = stats.restAngleRad != null ? stats.restAngleRad : 0;
+        const strike = stats.strikeAngleRad != null ? stats.strikeAngleRad : 1;
+        const dead = partState === "destroyed";
+        if (cooldown > 0) cooldown -= dt;
+        if (swingTimer > 0) swingTimer -= dt;
+
+        if (dead) {
+          // A destroyed arm falls limp; no force, no strike.
+          if (state !== "idle") { state = "idle"; writeAngle(call, rest, 0); }
+        } else if (state === "striking") {
+          if (swingTimer <= 0) {
+            state = "recovering";
+            swingTimer = stats.recoverSeconds != null ? stats.recoverSeconds : 0.5;
+            // Recover gently — hauling the arm back at strike force would let a
+            // flipper launch itself off its own return stroke.
+            writeAngle(call, rest, (stats.motorMaxForce || 2000) * 0.35);
+          }
+        } else if (state === "recovering") {
+          if (swingTimer <= 0) state = "idle";
+        } else if (commanded && cooldown <= 0) {
+          // Fires whenever it is commanded and the cooldown has elapsed — NOT on the
+          // press edge. Edge-firing was the first build and it was wrong for the AI:
+          // UtilityAi holds `spinCommand` for as long as it wants the weapon live, so
+          // an axe swung once per engagement instead of once per cooldown. The
+          // cooldown is already the rate limit, which makes the edge check redundant
+          // for the human too.
+          state = "striking";
+          swingTimer = stats.strikeSeconds != null ? stats.strikeSeconds : 0.15;
+          cooldown = stats.cooldownSeconds != null ? stats.cooldownSeconds : 1;
+          const damagedForce = partState === "damaged" ? dmg.damagedWeaponRpmMultiplier : 1;
+          writeAngle(call, strike, (stats.motorMaxForce || 2000) * damagedForce);
+          engine.mcp.emit("battlebots.weaponSwing", { entity, role: params.role, arc: strike - rest });
+        }
+        wasCommanded = commanded;
+
+        // The shared contract: 1 while the stroke is live, 0 otherwise. This is what
+        // makes an axe a burst weapon in the damage model without the damage model
+        // knowing what an axe is.
+        const live = state === "striking" ? 1 : 0;
+        const tag = state + ":" + live;
+        if (tag !== lastReported) {
+          lastReported = tag;
+          engine.mcp.emit("battlebots.weaponState", {
+            entity, role: params.role, state, rpm: 0, commandedRpm: 0, partState,
+            spinFraction: live,
+          });
+        }
+        return;
+      }
 
       const ceiling = ceilingRpm();
       const rpm = currentRpm(call, entity);

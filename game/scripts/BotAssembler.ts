@@ -196,11 +196,15 @@ function assemble(engine, blueprintId, role, pose) {
       },
     }).content.entity;
 
-    // A powered spinner rides a revolute joint with a velocity motor; the
-    // WeaponController (T-3.9) ramps targetVelocity. Everything else is welded.
-    // Either way the joint is breakable, which is what detaches the part (T-5.2).
+    // An ACTUATED weapon rides a revolute joint; everything else is welded. Either
+    // way the joint is breakable, which is what detaches the part (T-5.2).
+    //   spin  (T-3.9, T-4.1) a velocity motor WeaponController ramps to targetRpm
+    //   swing (T-4.2, T-4.3) a position motor it drives between two angles
+    // A passive wedge has no axis and gets a fixed joint - it wins on geometry
+    // alone (T-4.4), so there is nothing to actuate and no controller to attach.
     const wstats = def.stats || {};
-    const powered = def.category === "weapon" && wstats.axis && wstats.targetRpm;
+    const swing = wstats.mode === "swing";
+    const powered = def.category === "weapon" && !!wstats.axis && (!!wstats.targetRpm || swing);
     const link = {
       kind: powered ? "revolute" : "fixed",
       mode: "impulse",
@@ -212,14 +216,24 @@ function assemble(engine, blueprintId, role, pose) {
       distance: null,
       breakForce: socket.breakForce,
       contactsEnabled: false,
+      // A swing weapon is authored parked at its rest angle with the position
+      // motor already holding it there, so an axe does not flop on spawn.
       motor: powered
-        ? {
-            targetVelocity: 0, // the weapon controller spins it up
-            maxForce: wstats.motorMaxForce != null ? wstats.motorMaxForce : 500,
-            stiffness: 0,
-            damping: 0,
-            targetPosition: null,
-          }
+        ? (swing
+            ? {
+                targetVelocity: 0,
+                maxForce: wstats.motorMaxForce != null ? wstats.motorMaxForce : 2000,
+                stiffness: wstats.motorStiffness != null ? wstats.motorStiffness : 900,
+                damping: wstats.motorDamping != null ? wstats.motorDamping : 60,
+                targetPosition: wstats.restAngleRad != null ? wstats.restAngleRad : 0,
+              }
+            : {
+                targetVelocity: 0, // the weapon controller spins it up
+                maxForce: wstats.motorMaxForce != null ? wstats.motorMaxForce : 500,
+                stiffness: 0,
+                damping: 0,
+                targetPosition: null,
+              })
         : null,
     };
     addComponent({ entity, component: "Joint", data: { joints: [link] } });
@@ -259,11 +273,25 @@ function assemble(engine, blueprintId, role, pose) {
   // place stops a new preview scene from silently acquiring an AI opponent.
   const inert = role === "workshop" || role === "select";
   if (!inert) {
+    // T-4.10 — the fitted motor IS the drivetrain tuning. Resolved here, at assembly,
+    // because this is the only place that knows the blueprint; BotDrive stays a pure
+    // actuator that reads numbers rather than looking parts up. A bot with no motor
+    // fitted falls back to 1.0 across the board rather than being undrivable.
+    let mstats = {};
+    for (const a2 of blueprint.attachments || []) {
+      const d = parts[a2.partId];
+      if (d && d.category === "motor") { mstats = d.stats || {}; break; }
+    }
     attach({
       entity: chassis,
       behavior: "BotDrive",
       enabled: true,
-      params: { inputDriven: role === "player" },
+      params: {
+        inputDriven: role === "player",
+        driveForceMultiplier: mstats.driveForceMultiplier != null ? mstats.driveForceMultiplier : 1,
+        turnTorqueMultiplier: mstats.turnTorqueMultiplier != null ? mstats.turnTorqueMultiplier : 1,
+        maxSpeedMultiplier: mstats.maxSpeedMultiplier != null ? mstats.maxSpeedMultiplier : 1,
+      },
     });
   }
 

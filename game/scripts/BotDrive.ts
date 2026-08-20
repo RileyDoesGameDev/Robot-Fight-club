@@ -17,6 +17,12 @@
  *   *what* to do, never *how*. That is the split T-3.13 asks for, so the week-5
  *   Utility AI replaces the decision layer without touching this file.
  *
+ * MOTOR TRADEOFF (T-4.10)
+ *   `params.driveForceMultiplier` / `turnTorqueMultiplier` / `maxSpeedMultiplier` come
+ *   from the fitted motor PartDef, resolved by BotAssembler. Sprint drive trades turn
+ *   rate for speed, Grinder drive the reverse. They are params rather than a lookup
+ *   here so this file stays a pure actuator with one tuning source.
+ *
  * DEGRADATION CHANNEL (T-3.6)
  *   `ctx.params.driveLeft` / `driveRight` (0..1) scale each track. DamageSystem
  *   writes them with `scene.setComponent` on this entity's Script component;
@@ -147,6 +153,13 @@ export default function create() {
         wantSelfRight = intent.selfRight === true;
       }
 
+      // T-4.10 — the motor part's contribution. Written into params by the assembler,
+      // so this stays a pure actuator: it scales, it does not look parts up.
+      const num = (v, dflt) => (typeof v === "number" && isFinite(v) ? v : dflt);
+      const mForce = num(params.driveForceMultiplier, 1);
+      const mTurn = num(params.turnTorqueMultiplier, 1);
+      const mSpeed = num(params.maxSpeedMultiplier, 1);
+
       const scaleL = typeof params.driveLeft === "number" ? params.driveLeft : 1;
       const scaleR = typeof params.driveRight === "number" ? params.driveRight : 1;
       const left = Math.max(-1, Math.min(1, fwdAxis + turnAxis)) * scaleL;
@@ -157,14 +170,14 @@ export default function create() {
       // --- soft caps --------------------------------------------------------
       const v = body.linearVelocity;
       const speedAlongForward = v.x * forward[0] + v.y * forward[1] + v.z * forward[2];
-      const speedFade = Math.max(0, 1 - Math.abs(speedAlongForward) / MAX_SPEED);
+      const speedFade = Math.max(0, 1 - Math.abs(speedAlongForward) / (MAX_SPEED * mSpeed));
       const yawFade = Math.max(0, 1 - Math.abs(body.angularVelocity.y) / MAX_YAW_RATE);
 
       // Traction only exists while upright — a flipped bot must not scoot.
       const grounded = up[1] > UPRIGHT_DOT;
 
       if (grounded && drive !== 0) {
-        const j = DRIVE_FORCE * drive * speedFade * dt;
+        const j = DRIVE_FORCE * mForce * drive * speedFade * dt;
         call("physics.applyImpulse", {
           entity,
           impulse: { x: forward[0] * j, y: forward[1] * j, z: forward[2] * j },
@@ -174,7 +187,7 @@ export default function create() {
       if (grounded && yaw !== 0) {
         call("physics.applyTorque", {
           entity,
-          torque: { x: 0, y: TURN_TORQUE * yaw * yawFade * dt, z: 0 },
+          torque: { x: 0, y: TURN_TORQUE * mTurn * yaw * yawFade * dt, z: 0 },
         });
       }
 

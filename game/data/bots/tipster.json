@@ -1,0 +1,46 @@
+{
+  "name": "Tipster",
+  "blurb": "Quick middleweight flipper. Does almost no damage - it wins by putting you on your back, or in a pit.",
+  "chassisId": "ch-wedge-m",
+  "paint": {
+    "primary": "#b03060",
+    "secondary": "#f0e68c"
+  },
+  "attachments": [
+    {
+      "socketId": "wheel_fl",
+      "partId": "wh-m"
+    },
+    {
+      "socketId": "wheel_fr",
+      "partId": "wh-m"
+    },
+    {
+      "socketId": "wheel_rl",
+      "partId": "wh-m"
+    },
+    {
+      "socketId": "wheel_rr",
+      "partId": "wh-m"
+    },
+    {
+      "socketId": "weapon_top",
+      "partId": "wp-flipper-p"
+    },
+    {
+      "socketId": "armor_front",
+      "partId": "ar-light"
+    },
+    {
+      "socketId": "motor_bay",
+      "partId": "mt-speed"
+    }
+  ],
+  "derived": {
+    "totalMassKg": 87,
+    "weightClass": "middle",
+    "armorTotal": 90,
+    "weaponRating": 190
+  },
+  "aiPersonality": "defensive"
+}

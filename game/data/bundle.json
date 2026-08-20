@@ -719,6 +719,137 @@
         "gripScale": 0.9
       }
     },
+    "wp-drum-v": {
+      "id": "wp-drum-v",
+      "category": "weapon",
+      "displayName": "Vertical Drum",
+      "mass": 22,
+      "hp": 170,
+      "cost": 320,
+      "mesh": null,
+      "primitive": "box",
+      "visualScale": [
+        0.34,
+        0.22,
+        0.22
+      ],
+      "requiresSocketType": "weapon",
+      "colliderSpec": {
+        "shape": "cylinder",
+        "radius": 0.16,
+        "halfHeight": 0.17,
+        "friction": 0.35,
+        "restitution": 0.1
+      },
+      "stats": {
+        "type": "drumVertical",
+        "mode": "spin",
+        "axis": [
+          1,
+          0,
+          0
+        ],
+        "targetRpm": 1100,
+        "spinUpSeconds": 1.8,
+        "motorMaxForce": 1100,
+        "energyLossPerHit": 0.25,
+        "jamThresholdRpm": 150,
+        "jamCooldownSeconds": 1.2,
+        "spinUpGraceSeconds": 0.8,
+        "jamFraction": 0.35,
+        "sweptEnvelope": true,
+        "spinDownSeconds": 3,
+        "note": "Shorter, fatter and lower-inertia than the bar spinner: spins up faster, hits more often, hits less hard (T-4.1)."
+      }
+    },
+    "wp-flipper-p": {
+      "id": "wp-flipper-p",
+      "category": "weapon",
+      "displayName": "Pneumatic Flipper",
+      "mass": 14,
+      "hp": 190,
+      "cost": 260,
+      "mesh": null,
+      "primitive": "box",
+      "visualScale": [
+        0.5,
+        0.06,
+        0.34
+      ],
+      "requiresSocketType": "weapon",
+      "colliderSpec": {
+        "shape": "box",
+        "halfExtents": [
+          0.25,
+          0.03,
+          0.17
+        ],
+        "friction": 0.3,
+        "restitution": 0
+      },
+      "stats": {
+        "type": "flipper",
+        "mode": "swing",
+        "axis": [
+          1,
+          0,
+          0
+        ],
+        "restAngleRad": -0.05,
+        "strikeAngleRad": 1.35,
+        "strikeSeconds": 0.09,
+        "recoverSeconds": 0.7,
+        "cooldownSeconds": 1.6,
+        "motorMaxForce": 5200,
+        "motorStiffness": 2600,
+        "motorDamping": 40,
+        "note": "Fastest and strongest actuator of the three, lowest damage factor. It wins by putting the other bot on its back or in a pit, which is why self-flip risk is real - the same impulse goes both ways (T-4.3)."
+      }
+    },
+    "wp-hammer-a": {
+      "id": "wp-hammer-a",
+      "category": "weapon",
+      "displayName": "Overhead Axe",
+      "mass": 16,
+      "hp": 160,
+      "cost": 280,
+      "mesh": null,
+      "primitive": "box",
+      "visualScale": [
+        0.12,
+        0.5,
+        0.1
+      ],
+      "requiresSocketType": "weapon",
+      "colliderSpec": {
+        "shape": "box",
+        "halfExtents": [
+          0.06,
+          0.25,
+          0.05
+        ],
+        "friction": 0.4,
+        "restitution": 0.05
+      },
+      "stats": {
+        "type": "hammer",
+        "mode": "swing",
+        "axis": [
+          1,
+          0,
+          0
+        ],
+        "restAngleRad": -1.2,
+        "strikeAngleRad": 0.9,
+        "strikeSeconds": 0.16,
+        "recoverSeconds": 0.5,
+        "cooldownSeconds": 1.1,
+        "motorMaxForce": 2600,
+        "motorStiffness": 900,
+        "motorDamping": 60,
+        "note": "Highest weaponFactor in the table (1.3) but it is only live for strikeSeconds per 1.8 s cycle - burst damage against a spinner's sustained damage (T-4.2)."
+      }
+    },
     "wp-spinner-h": {
       "id": "wp-spinner-h",
       "category": "weapon",
@@ -792,6 +923,52 @@
     }
   },
   "bots": {
+    "gavel": {
+      "name": "Gavel",
+      "blurb": "Heavyweight axe on a torque drive. One swing a second, and the swing is the hardest single hit in the game.",
+      "chassisId": "ch-brick-h",
+      "paint": {
+        "primary": "#7a4b1f",
+        "secondary": "#c9c9c9"
+      },
+      "attachments": [
+        {
+          "socketId": "wheel_fl",
+          "partId": "wh-l"
+        },
+        {
+          "socketId": "wheel_fr",
+          "partId": "wh-l"
+        },
+        {
+          "socketId": "wheel_rl",
+          "partId": "wh-l"
+        },
+        {
+          "socketId": "wheel_rr",
+          "partId": "wh-l"
+        },
+        {
+          "socketId": "weapon_top",
+          "partId": "wp-hammer-a"
+        },
+        {
+          "socketId": "armor_front",
+          "partId": "ar-med"
+        },
+        {
+          "socketId": "motor_bay",
+          "partId": "mt-torque"
+        }
+      ],
+      "derived": {
+        "totalMassKg": 152,
+        "weightClass": "heavy",
+        "armorTotal": 140,
+        "weaponRating": 160
+      },
+      "aiPersonality": "opportunist"
+    },
     "grinder": {
       "name": "Grinder",
       "blurb": "Middleweight spinner on a torque drive. Slow to line up, hard to shove off a hit.",
@@ -837,6 +1014,52 @@
         "weaponRating": 150
       },
       "aiPersonality": "defensive"
+    },
+    "havoc": {
+      "name": "Havoc",
+      "blurb": "Middleweight drum. Spins up in under two seconds and lifts whatever it touches - it will not one-shot you, it will just never stop.",
+      "chassisId": "ch-box-m",
+      "paint": {
+        "primary": "#2f6f8f",
+        "secondary": "#e0e0e0"
+      },
+      "attachments": [
+        {
+          "socketId": "wheel_fl",
+          "partId": "wh-m"
+        },
+        {
+          "socketId": "wheel_fr",
+          "partId": "wh-m"
+        },
+        {
+          "socketId": "wheel_rl",
+          "partId": "wh-m"
+        },
+        {
+          "socketId": "wheel_rr",
+          "partId": "wh-m"
+        },
+        {
+          "socketId": "weapon_top",
+          "partId": "wp-drum-v"
+        },
+        {
+          "socketId": "armor_front",
+          "partId": "ar-med"
+        },
+        {
+          "socketId": "motor_bay",
+          "partId": "mt-balanced"
+        }
+      ],
+      "derived": {
+        "totalMassKg": 108,
+        "weightClass": "middle",
+        "armorTotal": 140,
+        "weaponRating": 170
+      },
+      "aiPersonality": "aggressive"
     },
     "hornet": {
       "name": "Hornet",
@@ -1067,6 +1290,52 @@
         "weaponRating": 150
       },
       "aiPersonality": "aggressive"
+    },
+    "tipster": {
+      "name": "Tipster",
+      "blurb": "Quick middleweight flipper. Does almost no damage - it wins by putting you on your back, or in a pit.",
+      "chassisId": "ch-wedge-m",
+      "paint": {
+        "primary": "#b03060",
+        "secondary": "#f0e68c"
+      },
+      "attachments": [
+        {
+          "socketId": "wheel_fl",
+          "partId": "wh-m"
+        },
+        {
+          "socketId": "wheel_fr",
+          "partId": "wh-m"
+        },
+        {
+          "socketId": "wheel_rl",
+          "partId": "wh-m"
+        },
+        {
+          "socketId": "wheel_rr",
+          "partId": "wh-m"
+        },
+        {
+          "socketId": "weapon_top",
+          "partId": "wp-flipper-p"
+        },
+        {
+          "socketId": "armor_front",
+          "partId": "ar-light"
+        },
+        {
+          "socketId": "motor_bay",
+          "partId": "mt-speed"
+        }
+      ],
+      "derived": {
+        "totalMassKg": 87,
+        "weightClass": "middle",
+        "armorTotal": 90,
+        "weaponRating": 190
+      },
+      "aiPersonality": "defensive"
     }
   },
   "damage": {

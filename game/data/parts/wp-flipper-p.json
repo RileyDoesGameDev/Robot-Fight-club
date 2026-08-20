@@ -1,0 +1,44 @@
+{
+  "id": "wp-flipper-p",
+  "category": "weapon",
+  "displayName": "Pneumatic Flipper",
+  "mass": 14,
+  "hp": 190,
+  "cost": 260,
+  "mesh": null,
+  "primitive": "box",
+  "visualScale": [
+    0.5,
+    0.06,
+    0.34
+  ],
+  "requiresSocketType": "weapon",
+  "colliderSpec": {
+    "shape": "box",
+    "halfExtents": [
+      0.25,
+      0.03,
+      0.17
+    ],
+    "friction": 0.3,
+    "restitution": 0
+  },
+  "stats": {
+    "type": "flipper",
+    "mode": "swing",
+    "axis": [
+      1,
+      0,
+      0
+    ],
+    "restAngleRad": -0.05,
+    "strikeAngleRad": 1.35,
+    "strikeSeconds": 0.09,
+    "recoverSeconds": 0.7,
+    "cooldownSeconds": 1.6,
+    "motorMaxForce": 5200,
+    "motorStiffness": 2600,
+    "motorDamping": 40,
+    "note": "Fastest and strongest actuator of the three, lowest damage factor. It wins by putting the other bot on its back or in a pit, which is why self-flip risk is real - the same impulse goes both ways (T-4.3)."
+  }
+}

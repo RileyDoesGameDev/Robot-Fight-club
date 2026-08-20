@@ -217,11 +217,19 @@ Derived from `Battle_Bots_Project_Proposal (1).docx`. Every task is written to b
 > between bots. Player customisation (§4.3) is deferred.
 
 ### 4.1 Weapon variety
-- [ ] **T-4.1** Vertical spinner / drum: prefab, joint config, damage profile, spin-up curve.
-- [ ] **T-4.2** Hammer / axe: revolute joint + position motor, swing arc, cooldown, damage profile.
-- [ ] **T-4.3** Flipper: prismatic or revolute actuator, impulse launch, cooldown, self-flip risk.
-- [ ] **T-4.4** Wedge / passive weapon: no actuator, wins on geometry — proves armor shape matters.
-- [ ] **T-4.5** Unify all four behind a shared `WeaponController` interface so the AI and input layers treat them uniformly.
+- [x] **T-4.1** Vertical spinner / drum: prefab, joint config, damage profile, spin-up curve.
+  - `wp-drum-v` — the same actuator as the bar spinner with its axis turned on its side, so it lifts rather than throws. Shorter, fatter, lower inertia: **1 100 rpm in 1.8 s** against the bar's 1 400 in 2.4. Spins up faster, hits more often, hits less hard (`drumVertical` factor 0.9 against the bar's 1.0).
+- [x] **T-4.2** Hammer / axe: revolute joint + position motor, swing arc, cooldown, damage profile.
+  - `wp-hammer-a` — a **position** motor, not a velocity one: a swing weapon is defined by where it starts and where it stops, so asking for an angle lets the solver do the acceleration. Arc −1.20 → 0.90 rad, 0.16 s strike, 1.1 s cooldown. Highest factor in the damage table (1.3) but live for only 0.16 s of each cycle — burst damage set against a spinner's sustained damage.
+- [x] **T-4.3** Flipper: prismatic or revolute actuator, impulse launch, cooldown, self-flip risk.
+  - `wp-flipper-p` — the same swing actuator, differing **entirely in data**: a wider, faster, far stronger arc (−0.05 → 1.35 rad, 0.09 s, 5 200 N) at the lowest damage factor in the table (0.3). It wins by putting the other bot on its back or in a pit rather than by grinding it down, which is exactly what T-5.12's pit rule now pays out. Self-flip risk is real and deliberate — the same impulse goes both ways — and the recovery stroke runs at 35 % force so a flipper cannot launch itself off its own return.
+- [x] **T-4.4** Wedge / passive weapon: no actuator, wins on geometry — proves armor shape matters.
+  - `wp-wedge-p`, shipped since week 2. It declares no `axis`, so the assembler welds it with a fixed joint and attaches **no controller at all** — there is nothing to actuate. It is also why Doorstop rams: a passive wedge reads as `weaponLost` to the utility AI (DESIGN §5).
+- [x] **T-4.5** Unify all four behind a shared `WeaponController` interface so the AI and input layers treat them uniformly.
+  - `stats.mode` picks the actuator — `spin` (velocity motor) or `swing` (position motor) — and **nothing else differs**. Same command path (`weapon.primary` for the human, `spinCommand` for the AI), same `battlebots.weaponState` report, same damage path.
+  - The shared contract is `spinFraction`: 0..1 of "how live is this weapon right now". DamageSystem scales weapon damage by it and knows nothing about modes — for a spinner it is rpm over target, for a swing weapon it is 1 during the stroke and 0 otherwise. That is what makes an axe a burst weapon **without the damage model knowing what an axe is**, and it needed no change to the damage model at all.
+  - **Bug found in testing:** swings originally fired on the press EDGE, which is wrong for the AI — UtilityAi holds `spinCommand` for as long as it wants the weapon live, so an axe swung once per engagement instead of once per cooldown. The cooldown was already the rate limit, making the edge check redundant for the human too. Measured after the fix: **axe 10 swings in its 10 s commanded window (1.1 s cooldown), flipper 9 across 14 s (1.6 s cooldown)** — both within a swing of nominal. **(V)**
+  - Three new bots carry them so every type is reachable from Bot Select: **Havoc** (drum), **Gavel** (axe), **Tipster** (flipper). Roster 6 → 9, parts 14 → 17. Verified live: `mode spin, target 1100 rpm` and `mode swing, arc −1.20 → 0.90 rad`, `scene.validate` clean, 0 engine errors.
 - [ ] **T-4.6** Per-weapon audio + VFX hooks (stubbed now, filled in weeks 5–6).
 
 ### 4.2 Armor & weight classes
@@ -230,7 +238,10 @@ Derived from `Battle_Bots_Project_Proposal (1).docx`. Every task is written to b
 - [x] **T-4.8** Define weight classes with mass caps; the Workshop blocks saving an over-cap bot.
   - Caps 60 / 110 / 180 kg in `game/data/weight-classes.json`; `validate.js` fails an over-cap blueprint at authoring time, and the Workshop refuses the save (verified at 204 kg).
 - [ ] **T-4.9** First balance pass: verify no single weapon dominates every matchup. Log matchup results in a table. **(V)**
-- [ ] **T-4.10** Add motor/drivetrain parts as a real tradeoff (speed vs. torque vs. mass).
+- [x] **T-4.10** Add motor/drivetrain parts as a real tradeoff (speed vs. torque vs. mass).
+  - The three motor PartDefs have existed since week 2 and their stats were **completely inert**: `driveForceMultiplier`, `turnTorqueMultiplier` and `maxSpeedMultiplier` were authored, validated by `validate.js`, and read by nothing. Fitting a Sprint drive or a Grinder drive changed only the bot's mass.
+  - BotAssembler now resolves the fitted motor at assembly time and writes those three numbers into BotDrive's params; BotDrive scales its drive impulse, its yaw torque and its speed cap by them. Resolved at assembly rather than looked up inside BotDrive because the assembler is the only thing that knows the blueprint, and it keeps BotDrive a pure actuator with a single tuning source. A bot with no motor fitted falls back to 1.0 rather than being undrivable.
+  - The tradeoff is now real: Sprint **1.25 force / 0.85 turn / 1.3 top speed** against Grinder **0.85 / 1.35 / 0.8**. It also gives the motor something to lose — T-5.4 made a damaged motor scale both tracks by 0.6 and a dead one stop the bot outright.
 
 ### 4.3 Customization visuals
 - [>] **T-4.11** Build the paint system: base + secondary color per part via `material_setParams` or `MeshRenderer.color`.
