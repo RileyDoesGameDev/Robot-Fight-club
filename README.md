@@ -9,12 +9,13 @@ Solo project · 8-week window · feature-complete target: end of week 6.
 > a prebuilt bot**, not building one. Rationale, and what it costs the pitch, in
 > [docs/DESIGN.md](docs/DESIGN.md) §0.
 
-**Status: the Create → Test → Destroy loop closes.** Pick one of six prebuilt bots in **Bot Select**,
-load `Arena01`, and fight a scripted AI opponent with working damage, part degradation, detachment and
-knockout — all verified end to end. A full part-fitting **Workshop** also exists and is kept as a stretch
-feature (it is how the roster gets authored). What is missing is the *frame* around a match: a Test scene,
-automatic scene switching, and a match lifecycle that ends when the knockout fires — see
-[docs/VERTICAL-SLICE.md](docs/VERTICAL-SLICE.md).
+**Status: the vertical-slice gate is passed (T-3.16, 2026-08-20).** Pick one of six prebuilt bots in
+**Bot Select**, then **PRACTICE** to spar in `DemoCenter` or **FIGHT** a timed match in `Arena01`: a
+3-second countdown, a scripted AI opponent, working damage with part degradation, detachment and
+knockout, and a verdict on knockout or on damage dealt at time expiry — then Rematch or Change Bot.
+No editor needed once you are in. A full part-fitting **Workshop** also exists and is kept as a stretch
+feature (it is how the roster gets authored). See [docs/VERTICAL-SLICE.md](docs/VERTICAL-SLICE.md) for
+the gate and its evidence.
 
 ![Two assembled bots facing off in Arena01](docs/images/assembled-bots.png)
 
@@ -114,8 +115,9 @@ blueprint's cached mass and weight class match the sum of its parts.
 
 `W`/`S` drive · `A`/`D` turn · `Space` spin up the weapon · `R` self-right · `Esc` pause
 
-In the editor: load `BotSelect`, pick a bot, press **CONFIRM**, then load `Arena01`. The arena reads
-whatever was confirmed.
+Load `BotSelect` and the rest is in-game: **PRACTICE** spars in `DemoCenter` (pick who you fight,
+no clock), **FIGHT** runs a timed match in `Arena01`. When it ends, **Rematch** replays it and
+**Change Bot** goes back to the roster.
 
 ## Git LFS
 

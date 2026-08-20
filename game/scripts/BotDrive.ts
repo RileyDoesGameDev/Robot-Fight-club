@@ -101,8 +101,11 @@ export default function create() {
       const res = call("physics.bodyState", { entity });
       // Before the first play-mode enable the physics provider answers with an
       // isError whose content is a string, not a body — guard on the shape.
+      // A body can also come back with a rotation but no velocities (seen on the
+      // first fixed step after assembly, before the body joins the physics world),
+      // so check every field this hook dereferences, not just the first one.
       const body = res && !res.isError ? res.content : null;
-      if (!body || !body.rotation) return;
+      if (!body || !body.rotation || !body.linearVelocity || !body.angularVelocity) return;
 
       const q = [body.rotation.x, body.rotation.y, body.rotation.z, body.rotation.w];
       const forward = rotate(q, [0, 0, -1]); // chassis nose is -Z
@@ -119,7 +122,14 @@ export default function create() {
       let fwdAxis = 0;
       let turnAxis = 0;
       let wantSelfRight = false;
-      if (params.inputDriven === true) {
+      // `frozen` is the match director's hold — during a countdown, or once a match
+      // is over, neither the keyboard nor an AI intent should move the bot. Weapons
+      // are deliberately NOT frozen: pre-spinning during the countdown is a real
+      // tactic and reads well on screen.
+      const frozen = params.frozen === true;
+      if (frozen) {
+        // fall through with zeroed axes
+      } else if (params.inputDriven === true) {
         fwdAxis = (input.actionHeld("drive.forward") ? 1 : 0) - (input.actionHeld("drive.back") ? 1 : 0);
         turnAxis = (input.actionHeld("turn.right") ? 1 : 0) - (input.actionHeld("turn.left") ? 1 : 0);
         wantSelfRight = input.actionHeld("bot.selfRight");

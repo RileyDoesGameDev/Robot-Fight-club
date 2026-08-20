@@ -296,6 +296,14 @@ spawner marker once, and to re-run it set `Script.enabled = false` on one frame 
 ScriptSystem then tears the instance down and builds a fresh one, so `onStart` runs again. Only
 Script-free bodies are ever deleted. Costs a 3-frame state machine for what should be one call.
 
+**Confirmed safe, for contrast (2026-08-20)** `project.loadScene` *from* a script hook is fine, even
+though it destroys every Script entity in the scene including the caller. The reload path drops the
+ScriptSystem's instances on `world.reloaded` rather than mutating the world mid-iteration, so the frame
+loop survives and keeps stepping. We rely on this: `MatchDirector` and `DemoCenterController` switch
+scenes directly from their `ui.clicked` handlers (T-6.2), which is why the deferred-request queue we had
+budgeted for scene flow was never needed. Worth a test that pins the behaviour, since the two paths look
+identical from a script author's seat and only one of them works.
+
 ---
 
 ## BUG-012 🟠 `renderer.captureScreenshot` silently returns a blank image when no viewport is attached

@@ -253,7 +253,10 @@ function assemble(engine, blueprintId, role, pose) {
   // BotDrive is the actuation layer for EVERY driven bot. The player's reads the
   // keyboard; an AI bot's reads `intent` written by an AiDriver brain (T-3.13), so
   // the measured drive tuning lives in one file rather than being duplicated.
-  if (role !== "workshop") {
+  // Display-only roles get no drivetrain and no brain. Keeping the list in one
+  // place stops a new preview scene from silently acquiring an AI opponent.
+  const inert = role === "workshop" || role === "select";
+  if (!inert) {
     attach({
       entity: chassis,
       behavior: "BotDrive",
@@ -264,7 +267,7 @@ function assemble(engine, blueprintId, role, pose) {
 
   // Anyone who is not the player gets a brain. It is a CHILD entity because an
   // entity can hold only one Script and the chassis already carries BotDrive.
-  if (role !== "player" && role !== "workshop") {
+  if (!inert && role !== "player") {
     const brain = createEntity({
       components: {
         Name: { value: "Bot_" + role + "_Brain" },

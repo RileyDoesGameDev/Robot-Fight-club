@@ -1,0 +1,45 @@
+{
+  "name": "Doorstop",
+  "blurb": "Quick middleweight wedge on a sprint drive. No spinning parts to jam.",
+  "chassisId": "ch-wedge-m",
+  "paint": {
+    "primary": "#d8a021",
+    "secondary": "#22222a"
+  },
+  "attachments": [
+    {
+      "socketId": "wheel_fl",
+      "partId": "wh-m"
+    },
+    {
+      "socketId": "wheel_fr",
+      "partId": "wh-m"
+    },
+    {
+      "socketId": "wheel_rl",
+      "partId": "wh-m"
+    },
+    {
+      "socketId": "wheel_rr",
+      "partId": "wh-m"
+    },
+    {
+      "socketId": "weapon_top",
+      "partId": "wp-wedge-p"
+    },
+    {
+      "socketId": "armor_front",
+      "partId": "ar-med"
+    },
+    {
+      "socketId": "motor_bay",
+      "partId": "mt-speed"
+    }
+  ],
+  "derived": {
+    "totalMassKg": 89,
+    "weightClass": "middle",
+    "armorTotal": 140,
+    "weaponRating": 180
+  }
+}

@@ -203,9 +203,10 @@ Derived from `Battle_Bots_Project_Proposal (1).docx`. Every task is written to b
   - **Result:** `game/scripts/AiDriver.ts`, on a brain child entity. Decision layer only — writes `intent` into the chassis `Script.params`, `BotDrive` actuates, so drive tuning is not duplicated and week 5 replaces `decide()` alone. Priority: knocked-out → self-right → avoid-pit → back-off → break-off → disengage → align → close → attack. **Measured:** closed 5.44 m → 0.88 m in ~1 s, then cycled `attack → break-off → back-off → align → close → attack`; damage exchanged both ways (102.4 vs 94.1).
 - [x] **T-3.14** Set up the nav layer if pathing is needed (`nav_setGrid` / `nav_findPath`) or confirm direct steering is sufficient in a bare arena. Decide; don't leave both half-built.
   - **Decided: no nav grid.** Direct steering only — a bare 12 x 12 m box with one moving obstacle gives A* nothing a heading error cannot express, and half-building both paths is what this task warns against. Corner pits are handled by a repulsion term. Revisit if T-5.12 hazards add real geometry to route around.
-- [ ] **T-3.15** Build the `DemoCenter` scene: opponent select, restart, control tips.
-- [~] **T-3.16** **Slice gate:** full Create → Test → Destroy loop playable with one weapon, one arena, one AI opponent. This is the proposal's week 2–3 validation milestone. **(V)**
-  - **Substance done, frame missing.** A chosen bot drives, fights the scripted AI, takes and deals damage, sheds parts and can be knocked out — verified end to end (T-2.23). What is missing is the frame around a match: `DemoCenter` (T-3.15), automatic scene switching (T-6.2), and a match lifecycle that ends when the knockout event fires (T-6.3). Today you load `Arena01` by hand.
+- [x] **T-3.15** Build the `DemoCenter` scene: opponent select, restart, control tips.
+  - `game/scripts/DemoCenterController.ts` + the `DemoCenter` scene (21 authored entities, 41 live). Same room as `Arena01` but with MatchDirector in `practice` mode — no clock, no verdict. Adds a **Spar against** list (click a bot -> write `/data/bots/__opponent.json` -> reload) and six lines of control hints. The opponent spawner is `BotSpawn:__opponent:opponent`, so this reuses the same `__`-prefixed runtime-state pattern Bot Select uses and needed no assembler change.
+- [x] **T-3.16** **Slice gate:** full Create → Test → Destroy loop playable with one weapon, one arena, one AI opponent. This is the proposal's week 2–3 validation milestone. **(V)**
+  - **GATE PASSED 2026-08-20.** One unbroken run, no editor after the first load: `BotSelect` -> Blue Ruin -> **PRACTICE** -> `DemoCenter`, sparred Anvil -> **Change Bot** -> `BotSelect` -> Ravager -> **FIGHT** -> `Arena01` -> 3 s countdown -> full 120 s match -> *"time expired on damage 149 vs 145"*, HUD **MATCH OVER / YOU LOSE**. Evidence: `scene.validate` clean on cold boots of both fighting scenes (`Arena01` 39 live entities, `DemoCenter` 41), `profiler_getErrors` empty across the run, assembler determinism from T-2.11. The proposal's week 2–3 validation milestone is met — weeks 4–6 breadth now builds on a loop that demonstrably runs. Gaps the gate does not rest on: `MainMenu`/`PostMatch` stubs, the richer breakdown screen (T-6.4), and T-1.15's explicit joint-restore assertion.
 
 ---
 
@@ -264,7 +265,8 @@ Derived from `Battle_Bots_Project_Proposal (1).docx`. Every task is written to b
   - A part reaching `damaged` has its joint `breakForce` multiplied by `damagedBreakForceMultiplier` (0.5), so accumulated hits shear it off sooner.
 - [ ] **T-5.6** Curate the breakable set explicitly (proposal scope cut): wheels, weapon head, armor plates. **Not** every part, and **no** free-fracture.
 - [ ] **T-5.7** Verify a bot mid-disassembly stays physically stable — no NaN transforms, no exploding joints. Run `scene_validate` during play. **(V) (R)**
-- [ ] **T-5.8** Verify match reset restores all authored joints and part health cleanly (depends on T-1.15). **(V)**
+- [x] **T-5.8** Verify match reset restores all authored joints and part health cleanly (depends on T-1.15). **(V)**
+  - **Reloading the scene *is* the reset.** Part health lives in DamageSystem's own Map and force-broken joints are runtime state, so a fresh `project.loadScene` restores both with no bespoke teardown — Rematch is one call. Exercised back to back: a practice round, an opponent swap (which also reloads), and a full timed match, with `scene.validate` clean on cold boots of both scenes and no errors. An explicit assertion that every authored joint is back stays with T-1.15.
 
 ### 5.2 VFX & hazards
 - [ ] **T-5.9** Sparks on metal-on-metal impact (`vfx_createEmitter`, `vfx_burst`), scaled by impact force.
@@ -292,8 +294,10 @@ Derived from `Battle_Bots_Project_Proposal (1).docx`. Every task is written to b
 
 ### 6.1 Loop integration
 - [ ] **T-6.1** Main menu: Create / Test / Destroy / Options / Quit.
-- [ ] **T-6.2** Scene flow and state handoff: menu → workshop → demo center / arena → post-match → workshop, carrying the blueprint through.
-- [ ] **T-6.3** Match lifecycle: countdown, timer, knockout detection, time-expiry judgment on damage dealt (`game_start` / `game_pause` / `game_end` / `game_restart`).
+- [~] **T-6.2** Scene flow and state handoff: menu → workshop → demo center / arena → post-match → workshop, carrying the blueprint through.
+  - **The legs the slice needs are done.** `BotSelect` --PRACTICE--> `DemoCenter`, `BotSelect` --FIGHT--> `Arena01`, Rematch -> itself, Change Bot -> `BotSelect`. Key finding: **`project.loadScene` from inside a script hook is safe** — the ScriptSystem drops its instances on `world.reloaded` and the engine keeps stepping — so the deferred-request queue this was going to need was never built; buttons switch scenes directly. Blueprint hand-off rides `/data/bots/__selected.json`, so no destination scene knows the select screen exists. **Still open:** the `MainMenu` and `PostMatch` legs (both scenes are stubs; see T-6.4), and moving input-map application into a real bootstrap (T-2.26).
+- [x] **T-6.3** Match lifecycle: countdown, timer, knockout detection, time-expiry judgment on damage dealt (`game_start` / `game_pause` / `game_end` / `game_restart`).
+  - `game/scripts/MatchDirector.ts` — `countdown -> fighting -> over`, one marker per fighting scene, `mode` param picks timed match (120 s + 3 s countdown) or untimed practice. Bots are held still through BotDrive's new `frozen` param, checked *before* the keyboard/intent branch so one flag stops human and AI identically; **weapons stay live during the countdown** on purpose. Ends on `battlebots.knockout`, or at time expiry on damage dealt — judged by emitting `battlebots.requestReport` and ranking DamageSystem's reply rather than keeping a second tally. Drives `game.start` / `game.end` behind a `game.status` probe, since those transitions are legality-checked.
 - [ ] **T-6.4** Post-match screen: winner, damage dealt/taken, parts lost, and a "revise your bot" button back into the Workshop.
 - [ ] **T-6.5** Persistence: bot roster and match history survive a reload.
 

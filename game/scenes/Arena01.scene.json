@@ -1184,6 +1184,44 @@
           "params": {}
         }
       }
+    },
+    {
+      "id": 1451,
+      "parent": 18,
+      "components": {
+        "Transform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "Name": {
+          "value": "MatchDirector"
+        },
+        "Script": {
+          "behavior": "MatchDirector",
+          "enabled": true,
+          "params": {
+            "mode": "match",
+            "sceneName": "Arena01",
+            "matchSeconds": 120,
+            "countdownSeconds": 3,
+            "playerRole": "player"
+          }
+        }
+      }
     }
   ]
 }

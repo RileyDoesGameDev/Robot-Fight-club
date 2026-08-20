@@ -240,8 +240,9 @@ machinery that already existed rather than needing new plumbing. `__`-prefixed f
 are runtime state and are excluded from the bundle, so the selection never shows up
 as a seventh roster entry.
 
-Real scene *switching* is still T-6.2; today you load `Arena01` yourself and it
-picks up whatever was confirmed.
+**PRACTICE and FIGHT launch directly** (T-6.2). Both write the selection first, then
+load their scene — `DemoCenter` for sparring, `Arena01` for a timed match. Neither
+destination knows this screen exists; they read the file through their player spawner.
 
 **Verified (T-2.23 gate).** Confirmed Ravager in `BotSelect` → loaded `Arena01` →
 the player bot was built as Ravager (four `wh-l` wheels, spinner, heavy plate, torque
@@ -475,6 +476,87 @@ box whose only obstacle is the other bot, so a grid plus A* would buy nothing th
 heading error does not already express — and half-building both is precisely what
 T-3.14 warns against. Pits are handled by a repulsion term, not by pathing. Revisit
 only if week 5's arena hazards (T-5.12) introduce real geometry to route around.
+
+---
+
+## 5b. The match: lifecycle and scene flow (T-6.2, T-6.3, T-3.15)
+
+Everything above makes a fight *possible*. This is what makes it a **match** — it
+starts, it ends, and it tells you who won.
+
+### MatchDirector (T-6.3)
+
+`game/scripts/MatchDirector.ts`, one marker entity per fighting scene, params choose
+the mode:
+
+| param | `Arena01` | `DemoCenter` |
+|---|---|---|
+| `mode` | `"match"` | `"practice"` |
+| `matchSeconds` | 120 | — (untimed) |
+| `countdownSeconds` | 3 | 3 |
+
+State is `countdown → fighting → over`.
+
+**The freeze channel.** During the countdown, and again once the match is over, both
+bots are held still by writing `frozen: true` into `BotDrive`'s params — the same
+read-modify-write channel DamageSystem already uses for `driveLeft` / `driveRight`.
+BotDrive checks `frozen` *before* it decides whether to read the keyboard or an AI
+intent, so one flag stops the human and the AI identically and no third code path
+appears.
+
+**Weapons are deliberately not frozen.** Spinning up during the countdown is a real
+tactic in the sport, it costs nothing to allow, and it reads well on screen.
+
+**Two ways a match ends.**
+
+- **Knockout** — `battlebots.knockout` from DamageSystem. The knocked-out role loses.
+- **Time expiry** — decided on damage dealt. The director does *not* keep its own
+  tally: it emits `battlebots.requestReport` and ranks the reply. DamageSystem already
+  tracks damage per role, so making the judge read from it keeps one source of truth
+  for "who was winning". A gap under 0.5 HP is a draw.
+
+Verdict is announced on the HUD and emitted as `battlebots.matchResult`.
+
+The engine's own `game.*` session state is driven alongside ours so the host reflects
+reality. Those transitions are legality-checked, so the director probes `game.status`
+first and lets a rejected transition be a no-op rather than an error in the log.
+
+### Scene flow (T-6.2)
+
+`project.loadScene` **from inside a script hook is safe** — verified: the ScriptSystem
+drops its instances on `world.reloaded` and the engine keeps stepping. That killed the
+deferred-request queue this was going to need; buttons switch scenes directly.
+
+    BotSelect ──PRACTICE──> DemoCenter ──Change Bot──┐
+        │                       │                    │
+        └────FIGHT───> Arena01 ──Rematch──> itself    │
+                          │                          │
+                          └──────Change Bot──────────┴──> BotSelect
+
+**Reloading the scene *is* the match reset** (T-5.8). Part health lives in
+DamageSystem's own Map, and force-broken joints are runtime state — so a fresh load
+restores both without any bespoke teardown. Rematch is one `loadScene` call. This is
+also why swapping a practice opponent reloads rather than hot-swapping: tearing down
+eight jointed bodies while DamageSystem holds references to them is the risky path,
+and reloading resets health too, which is what you want between rounds anyway.
+
+`MainMenu` and `PostMatch` remain stubs; the richer post-match breakdown is T-6.4.
+
+### DemoCenter — the Test stage (T-3.15)
+
+Same room as `Arena01`, `practice` mode, plus the two things practice needs that a real
+match does not:
+
+- **Spar against** — the roster as a list; clicking one writes
+  `/data/bots/__opponent.json` and reloads. The scene's opponent spawner is
+  `BotSpawn:__opponent:opponent`, so this needs no new machinery in the assembler — it
+  is the same `__`-prefixed runtime-state pattern Bot Select uses for the player's bot,
+  and `__` files are excluded from the bundle so a practice opponent never shows up as
+  a seventh roster entry.
+- **Controls** — six lines of hints, because nothing else in the game teaches them.
+
+Practice has no clock and no verdict, so its Restart and Change Bot buttons are
+visible from the start rather than appearing on a result.
 
 ---
 

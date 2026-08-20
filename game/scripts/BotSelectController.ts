@@ -147,10 +147,11 @@ export default function create() {
       right.children.push(text([0.06, y0], [0.97, y0 + 0.105], "", 12));
     }
 
-    const bar = panel([0.3, 0.88], [0.7, 0.975]);
-    bar.children.push(button([0.02, 0.15], [0.28, 0.85], "< Prev", "cmd:prev"));
-    bar.children.push(button([0.3, 0.15], [0.56, 0.85], "Next >", "cmd:next"));
-    bar.children.push(button([0.6, 0.15], [0.98, 0.85], "CONFIRM", "cmd:confirm"));
+    const bar = panel([0.26, 0.88], [0.74, 0.975]);
+    bar.children.push(button([0.015, 0.15], [0.23, 0.85], "< Prev", "cmd:prev"));
+    bar.children.push(button([0.245, 0.15], [0.46, 0.85], "Next >", "cmd:next"));
+    bar.children.push(button([0.52, 0.15], [0.74, 0.85], "PRACTICE", "cmd:practice"));
+    bar.children.push(button([0.76, 0.15], [0.985, 0.85], "FIGHT", "cmd:fight"));
 
     const head = panel([0.3, 0.02], [0.7, 0.11]);
     head.children.push(text([0.02, 0.05], [0.98, 0.55], "BOT SELECT", 16));
@@ -219,7 +220,7 @@ export default function create() {
     index = (index + delta + roster.length) % roster.length;
     showPreview(call);
     refresh(call);
-    setHint(call, roster[index].bp.name + " — press CONFIRM to take it into the arena", false);
+    setHint(call, roster[index].bp.name + " — PRACTICE to spar, FIGHT for a timed match", false);
   }
 
   function confirm(call, engine) {
@@ -255,7 +256,7 @@ export default function create() {
       buildUi(call);
       showPreview(call);
       refresh(call);
-      setHint(call, roster.length + " bots — Prev/Next to browse, CONFIRM to choose", false);
+      setHint(call, roster.length + " bots — browse, then PRACTICE to spar or FIGHT for a timed match", false);
 
       off = engine.mcp.on("ui.clicked", (p) => {
         const id = p && p.actionId;
@@ -263,12 +264,21 @@ export default function create() {
         if (id.indexOf("pick:") === 0) {
           const i = parseInt(id.slice(5), 10);
           if (i >= 0 && i < roster.length) { index = i; showPreview(call); refresh(call);
-            setHint(call, roster[index].bp.name + " — press CONFIRM to take it into the arena", false); }
+            setHint(call, roster[index].bp.name + " — PRACTICE to spar, FIGHT for a timed match", false); }
           return;
         }
         if (id === "cmd:prev") return move(call, -1);
         if (id === "cmd:next") return move(call, 1);
-        if (id === "cmd:confirm") return confirm(call, engine);
+        if (id === "cmd:practice" || id === "cmd:fight") {
+          // Launching is confirming: persist the choice, then hand off. Arena01 and
+          // DemoCenter both read /data/bots/__selected.json through their player
+          // spawner, so neither scene needs to know this screen exists.
+          confirm(call, engine);
+          const target = id === "cmd:fight" ? "Arena01" : "DemoCenter";
+          engine.console.log("[Select] launching " + target);
+          call("project.loadScene", { name: target });
+          return;
+        }
       });
 
       engine.console.log("[Select] ready — " + roster.length + " bots, canvas " + ui.canvas);

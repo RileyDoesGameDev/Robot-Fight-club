@@ -53,16 +53,37 @@ Per the standing convention that every **(V)** task gets a number, a screenshot,
 
 **Week 2, also done (now a stretch feature — `DESIGN.md` §0):** the **Workshop** (T-2.12 – T-2.18) — fit/swap/remove parts across ten sockets, live mass and weight-class readout, undo/redo, save/load with a roster, and an over-cap save guard. The preview bot rebuilds on every edit through the same assembler the arena uses. The reverse path (T-2.10) is real: Save serialises what the *scene* contains and confirms it matches the draft.
 
-**Remaining for the gate:** the `BotSelect` screen (T-2.20 – T-2.23), the damage system (T-3.1 – T-3.8), the spinner weapon controller (T-3.9), the scripted AI opponent (T-3.13), the `DemoCenter` scene (T-3.15), and scene-to-scene hand-off so a chosen bot actually launches (T-6.2).
+**Week 3 (done — this closed the gate):** the damage system (T-3.1 – T-3.8), the spinner weapon controller (T-3.9), the scripted AI opponent (T-3.13), the `BotSelect` screen (T-2.20 – T-2.23), the `DemoCenter` scene (T-3.15), scene-to-scene hand-off (T-6.2), and the match lifecycle (T-6.3).
+
+**Remaining for the gate:** nothing. **T-3.16 passed 2026-08-20** — see below.
 
 **Pass criteria progress**
 
 | Step | State |
 |---|---|
 | 1. Create — pick a prebuilt bot | ✅ `BotSelect` works: 6-bot roster, spec card, turntable preview, CONFIRM persists the choice |
-| 2. Test — drive it | ⚠️ the chosen bot drives and fights in `Arena01`; `DemoCenter` (T-3.15) and automatic scene switching (T-6.2) do not exist — you load the arena yourself |
+| 2. Test — drive it | ✅ PRACTICE launches `DemoCenter`: pick a sparring partner, untimed, control hints, restart |
 | 3. Destroy — damage, part loss, degradation | ✅ damage, degradation, detachment, knockout and a working spinner all verified |
-| 4. Resolve — knockout, post-match summary | ❌ not started |
-| 5. Repeat — clean second match | ❌ blocked on T-1.15 (joint restore on reset) |
+| 4. Resolve — knockout, post-match summary | ✅ `MatchDirector` ends on knockout or on damage at time expiry, shows the verdict, and Change Bot returns to `BotSelect`. The *richer* breakdown screen is T-6.4 |
+| 5. Repeat — clean second match | ✅ Rematch reloads the scene, which restores part health and force-broken joints; two matches and an opponent swap ran back to back. Explicit joint-restore assertion is still T-1.15 |
 
-**Steps 1 and 3 are done and steps 2's substance works** — a chosen bot drives, fights an AI, takes and deals damage, sheds parts and can be knocked out. What is left is the *frame* around a match rather than the match itself: a Test scene (T-3.15), automatic scene flow (T-6.2), and a match lifecycle that ends when the knockout event fires (T-6.3). That is the remaining work for the T-3.16 gate.
+## Gate result — passed 2026-08-20
+
+Run end to end without touching the editor after the first load:
+
+`BotSelect` → picked **Blue Ruin** → **PRACTICE** → `DemoCenter`, sparred **Anvil** →
+**Change Bot** → `BotSelect` → picked **Ravager** → **FIGHT** → `Arena01` → 3-second
+countdown → a full 120-second match → *"time expired on damage 149 vs 145"*, HUD
+showing **MATCH OVER / YOU LOSE**.
+
+Evidence: `scene.validate` clean on a cold boot of both fighting scenes (`Arena01` 39
+live entities, `DemoCenter` 41), `profiler_getErrors` empty across the whole run, and
+the assembler's determinism recording from T-2.11.
+
+**The proposal's week 2–3 validation milestone is met.** Weeks 4–6 content breadth —
+more weapons, destruction polish, the utility AI, local multiplayer, audio — is now
+building on a loop that demonstrably runs rather than on an assumption that it will.
+
+Known gaps that the gate does not depend on: `MainMenu` and `PostMatch` are still
+stubs, the richer post-match breakdown is T-6.4, and T-1.15 still wants an explicit
+joint-restore assertion rather than the behavioural evidence above.
