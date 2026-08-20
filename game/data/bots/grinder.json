@@ -1,10 +1,10 @@
 {
-  "name": "Doorstop",
-  "blurb": "Quick middleweight wedge on a sprint drive. No spinning parts to jam.",
-  "chassisId": "ch-wedge-m",
+  "name": "Grinder",
+  "blurb": "Middleweight spinner on a torque drive. Slow to line up, hard to shove off a hit.",
+  "chassisId": "ch-box-m",
   "paint": {
-    "primary": "#d8a021",
-    "secondary": "#22222a"
+    "primary": "#3f7f4f",
+    "secondary": "#ffcc33"
   },
   "attachments": [
     {
@@ -25,7 +25,7 @@
     },
     {
       "socketId": "weapon_top",
-      "partId": "wp-wedge-p"
+      "partId": "wp-spinner-h"
     },
     {
       "socketId": "armor_front",
@@ -33,13 +33,13 @@
     },
     {
       "socketId": "motor_bay",
-      "partId": "mt-speed"
+      "partId": "mt-torque"
     }
   ],
   "derived": {
-    "totalMassKg": 89,
+    "totalMassKg": 107,
     "weightClass": "middle",
     "armorTotal": 140,
-    "weaponRating": 180
+    "weaponRating": 150
   }
 }

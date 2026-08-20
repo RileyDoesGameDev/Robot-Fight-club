@@ -156,10 +156,14 @@ Derived from `Battle_Bots_Project_Proposal (1).docx`. Every task is written to b
 
 ### 2.4 Bot Select — the new Create stage (added 2026-08-19)
 
-- [ ] **T-2.20** Author the prebuilt roster: 4–6 bots spanning the weight classes, each a `BotBlueprint` in `game/data/bots/`, each distinct enough to change how a match plays. Three exist (`player-slice`, `opp-wedge`, `opp-brick`) — they need companions with different weapons, not just different masses.
-- [ ] **T-2.21** Build the `BotSelect` scene: turntable preview of the highlighted bot, roster list, per-bot stat card (mass, class, armour total, weapon, top-speed estimate), Prev / Next / Confirm. Reuse `WorkshopController`'s stat + preview machinery — the preview path (write blueprint → spawner marker → `BotAssembler`) already works.
-- [ ] **T-2.22** Bot-select → arena hand-off: the confirmed blueprint id becomes the player spawn in `Arena01` / `DemoCenter`. Depends on the same scene-flow plumbing as T-6.2.
-- [ ] **T-2.23** **Vertical-slice gate (replaces T-2.19):** choose a bot in `BotSelect` → launch into `Arena01` → drive it. Loop closes end to end. **(V)**
+- [x] **T-2.20** Author the prebuilt roster: 4–6 bots spanning the weight classes, each a `BotBlueprint` in `game/data/bots/`, each distinct enough to change how a match plays. Three exist (`player-slice`, `opp-wedge`, `opp-brick`) — they need companions with different weapons, not just different masses.
+  - Six bots spanning all three classes: Hornet 69 (light), Doorstop 89, Blue Ruin 98, Grinder 107 (middle), Ravager 162, Anvil 168 (heavy). Chosen to change how a match plays — an unarmoured sprinter, two wedges, two spinners at different weights, and one bot with no weapon at all. **Also raised the lightweight cap 60 -> 80 kg**: the lightest rolling bot is 59 kg and the cheapest weapon is 10 kg, so at 60 no lightweight build could carry a weapon.
+- [x] **T-2.21** Build the `BotSelect` scene: turntable preview of the highlighted bot, roster list, per-bot stat card (mass, class, armour total, weapon, top-speed estimate), Prev / Next / Confirm. Reuse `WorkshopController`'s stat + preview machinery — the preview path (write blueprint → spawner marker → `BotAssembler`) already works.
+  - `game/scripts/BotSelectController.ts` + the `BotSelect` scene (8 authored entities). Roster list, spec card (class, mass, weapon, armour, estimated speed, chassis, blurb), Prev/Next/CONFIRM, and a turntable preview built through the same spawner path the Workshop uses. Role `select` is inert — no drivetrain, no AI brain. Speed estimate is clamped to BotDrive's MAX_SPEED; unclamped it overstated Hornet at 8.23 m/s.
+- [x] **T-2.22** Bot-select → arena hand-off: the confirmed blueprint id becomes the player spawn in `Arena01` / `DemoCenter`. Depends on the same scene-flow plumbing as T-6.2.
+  - CONFIRM writes `/data/bots/__selected.json`; `Arena01`'s player spawner is `BotSpawn:__selected:player` and BotAssembler already resolved ids from `/data/bots/<id>.json`, so no new plumbing was needed. `__`-prefixed files are excluded from the bundle so the selection is not mistaken for a roster entry. Automatic scene switching remains T-6.2.
+- [x] **T-2.23** **Vertical-slice gate (replaces T-2.19):** choose a bot in `BotSelect` → launch into `Arena01` → drive it. Loop closes end to end. **(V)**
+  - **Gate passed.** Confirmed Ravager in BotSelect -> loaded Arena01 -> the player bot was assembled as Ravager (4x wh-l, spinner, heavy plate, torque motor, 162 kg) -> drove it with the spinner running and fought the AI: 30.2 / 31.0 damage exchanged, 4 parts damaged, `scene.validate` clean, 0 new errors.
 
 ---
 
@@ -200,7 +204,8 @@ Derived from `Battle_Bots_Project_Proposal (1).docx`. Every task is written to b
 - [x] **T-3.14** Set up the nav layer if pathing is needed (`nav_setGrid` / `nav_findPath`) or confirm direct steering is sufficient in a bare arena. Decide; don't leave both half-built.
   - **Decided: no nav grid.** Direct steering only — a bare 12 x 12 m box with one moving obstacle gives A* nothing a heading error cannot express, and half-building both paths is what this task warns against. Corner pits are handled by a repulsion term. Revisit if T-5.12 hazards add real geometry to route around.
 - [ ] **T-3.15** Build the `DemoCenter` scene: opponent select, restart, control tips.
-- [ ] **T-3.16** **Slice gate:** full Create → Test → Destroy loop playable with one weapon, one arena, one AI opponent. This is the proposal's week 2–3 validation milestone. **(V)**
+- [~] **T-3.16** **Slice gate:** full Create → Test → Destroy loop playable with one weapon, one arena, one AI opponent. This is the proposal's week 2–3 validation milestone. **(V)**
+  - **Substance done, frame missing.** A chosen bot drives, fights the scripted AI, takes and deals damage, sheds parts and can be knocked out — verified end to end (T-2.23). What is missing is the frame around a match: `DemoCenter` (T-3.15), automatic scene switching (T-6.2), and a match lifecycle that ends when the knockout event fires (T-6.3). Today you load `Arena01` by hand.
 
 ---
 

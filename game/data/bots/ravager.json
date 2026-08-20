@@ -1,10 +1,10 @@
 {
-  "name": "Anvil",
-  "blurb": "Heavyweight brick. No weapon at all — it wins by outlasting and shoving.",
+  "name": "Ravager",
+  "blurb": "Heavyweight spinner behind a heavy plate. Everything it hits loses something.",
   "chassisId": "ch-brick-h",
   "paint": {
-    "primary": "#8a2f2f",
-    "secondary": "#3a3a3f"
+    "primary": "#6f2f8f",
+    "secondary": "#ffcc33"
   },
   "attachments": [
     {
@@ -24,16 +24,12 @@
       "partId": "wh-l"
     },
     {
+      "socketId": "weapon_top",
+      "partId": "wp-spinner-h"
+    },
+    {
       "socketId": "armor_front",
       "partId": "ar-heavy"
-    },
-    {
-      "socketId": "armor_left",
-      "partId": "ar-med"
-    },
-    {
-      "socketId": "armor_right",
-      "partId": "ar-med"
     },
     {
       "socketId": "motor_bay",
@@ -41,9 +37,9 @@
     }
   ],
   "derived": {
-    "totalMassKg": 168,
+    "totalMassKg": 162,
     "weightClass": "heavy",
-    "armorTotal": 480,
-    "weaponRating": 0
+    "armorTotal": 200,
+    "weaponRating": 150
   }
 }

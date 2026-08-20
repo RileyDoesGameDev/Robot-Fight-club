@@ -59,10 +59,10 @@ Per the standing convention that every **(V)** task gets a number, a screenshot,
 
 | Step | State |
 |---|---|
-| 1. Create — pick a prebuilt bot | ❌ `BotSelect` not built. Authoring works via the Workshop, but that is now off-path |
-| 2. Test — drive it | ⚠️ driving works in `Arena01`; `DemoCenter` and the scene hand-off do not exist |
-| 3. Destroy — damage, part loss, degradation | ❌ not started — the whole damage system |
+| 1. Create — pick a prebuilt bot | ✅ `BotSelect` works: 6-bot roster, spec card, turntable preview, CONFIRM persists the choice |
+| 2. Test — drive it | ⚠️ the chosen bot drives and fights in `Arena01`; `DemoCenter` (T-3.15) and automatic scene switching (T-6.2) do not exist — you load the arena yourself |
+| 3. Destroy — damage, part loss, degradation | ✅ damage, degradation, detachment, knockout and a working spinner all verified |
 | 4. Resolve — knockout, post-match summary | ❌ not started |
 | 5. Repeat — clean second match | ❌ blocked on T-1.15 (joint restore on reset) |
 
-Step 3 is the critical path — it carries the pitch the project still stands on. Step 1 is now small: a roster screen over blueprints that already exist and already assemble.
+**Steps 1 and 3 are done and steps 2's substance works** — a chosen bot drives, fights an AI, takes and deals damage, sheds parts and can be knocked out. What is left is the *frame* around a match rather than the match itself: a Test scene (T-3.15), automatic scene flow (T-6.2), and a match lifecycle that ends when the knockout event fires (T-6.3). That is the remaining work for the T-3.16 gate.

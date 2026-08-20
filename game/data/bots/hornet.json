@@ -1,35 +1,31 @@
 {
-  "name": "Doorstop",
-  "blurb": "Quick middleweight wedge on a sprint drive. No spinning parts to jam.",
+  "name": "Hornet",
+  "blurb": "Lightweight wedge. Fastest thing in the arena and completely unarmoured — win on position or lose fast.",
   "chassisId": "ch-wedge-m",
   "paint": {
-    "primary": "#d8a021",
+    "primary": "#d8d021",
     "secondary": "#22222a"
   },
   "attachments": [
     {
       "socketId": "wheel_fl",
-      "partId": "wh-m"
+      "partId": "wh-s"
     },
     {
       "socketId": "wheel_fr",
-      "partId": "wh-m"
+      "partId": "wh-s"
     },
     {
       "socketId": "wheel_rl",
-      "partId": "wh-m"
+      "partId": "wh-s"
     },
     {
       "socketId": "wheel_rr",
-      "partId": "wh-m"
+      "partId": "wh-s"
     },
     {
       "socketId": "weapon_top",
       "partId": "wp-wedge-p"
-    },
-    {
-      "socketId": "armor_front",
-      "partId": "ar-med"
     },
     {
       "socketId": "motor_bay",
@@ -37,9 +33,9 @@
     }
   ],
   "derived": {
-    "totalMassKg": 89,
-    "weightClass": "middle",
-    "armorTotal": 140,
+    "totalMassKg": 69,
+    "weightClass": "light",
+    "armorTotal": 0,
     "weaponRating": 180
   }
 }

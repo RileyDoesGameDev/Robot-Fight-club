@@ -23,7 +23,9 @@ const loadDir = (dir) =>
   Object.fromEntries(
     fs
       .readdirSync(path.join(ROOT, dir))
-      .filter((f) => f.endsWith(".json"))
+      // "__"-prefixed files are runtime state (__selected, __draft, __player),
+      // not roster content. BotAssembler resolves those from /data/bots/<id>.json.
+      .filter((f) => f.endsWith(".json") && !f.startsWith("__"))
       .sort()
       .map((f) => [path.basename(f, ".json"), readJson(path.join(ROOT, dir, f))]),
   );

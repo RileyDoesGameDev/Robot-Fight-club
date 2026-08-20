@@ -1,5 +1,6 @@
 {
   "name": "Blue Ruin",
+  "blurb": "Balanced middleweight with a horizontal spinner. The reference build.",
   "chassisId": "ch-box-m",
   "paint": {
     "primary": "#2d6cdf",

@@ -792,8 +792,95 @@
     }
   },
   "bots": {
+    "grinder": {
+      "name": "Grinder",
+      "blurb": "Middleweight spinner on a torque drive. Slow to line up, hard to shove off a hit.",
+      "chassisId": "ch-box-m",
+      "paint": {
+        "primary": "#3f7f4f",
+        "secondary": "#ffcc33"
+      },
+      "attachments": [
+        {
+          "socketId": "wheel_fl",
+          "partId": "wh-m"
+        },
+        {
+          "socketId": "wheel_fr",
+          "partId": "wh-m"
+        },
+        {
+          "socketId": "wheel_rl",
+          "partId": "wh-m"
+        },
+        {
+          "socketId": "wheel_rr",
+          "partId": "wh-m"
+        },
+        {
+          "socketId": "weapon_top",
+          "partId": "wp-spinner-h"
+        },
+        {
+          "socketId": "armor_front",
+          "partId": "ar-med"
+        },
+        {
+          "socketId": "motor_bay",
+          "partId": "mt-torque"
+        }
+      ],
+      "derived": {
+        "totalMassKg": 107,
+        "weightClass": "middle",
+        "armorTotal": 140,
+        "weaponRating": 150
+      }
+    },
+    "hornet": {
+      "name": "Hornet",
+      "blurb": "Lightweight wedge. Fastest thing in the arena and completely unarmoured — win on position or lose fast.",
+      "chassisId": "ch-wedge-m",
+      "paint": {
+        "primary": "#d8d021",
+        "secondary": "#22222a"
+      },
+      "attachments": [
+        {
+          "socketId": "wheel_fl",
+          "partId": "wh-s"
+        },
+        {
+          "socketId": "wheel_fr",
+          "partId": "wh-s"
+        },
+        {
+          "socketId": "wheel_rl",
+          "partId": "wh-s"
+        },
+        {
+          "socketId": "wheel_rr",
+          "partId": "wh-s"
+        },
+        {
+          "socketId": "weapon_top",
+          "partId": "wp-wedge-p"
+        },
+        {
+          "socketId": "motor_bay",
+          "partId": "mt-speed"
+        }
+      ],
+      "derived": {
+        "totalMassKg": 69,
+        "weightClass": "light",
+        "armorTotal": 0,
+        "weaponRating": 180
+      }
+    },
     "opp-brick": {
       "name": "Anvil",
+      "blurb": "Heavyweight brick. No weapon at all — it wins by outlasting and shoving.",
       "chassisId": "ch-brick-h",
       "paint": {
         "primary": "#8a2f2f",
@@ -842,6 +929,7 @@
     },
     "opp-wedge": {
       "name": "Doorstop",
+      "blurb": "Quick middleweight wedge on a sprint drive. No spinning parts to jam.",
       "chassisId": "ch-wedge-m",
       "paint": {
         "primary": "#d8a021",
@@ -886,6 +974,7 @@
     },
     "player-slice": {
       "name": "Blue Ruin",
+      "blurb": "Balanced middleweight with a horizontal spinner. The reference build.",
       "chassisId": "ch-box-m",
       "paint": {
         "primary": "#2d6cdf",
@@ -927,6 +1016,51 @@
         "armorTotal": 90,
         "weaponRating": 150
       }
+    },
+    "ravager": {
+      "name": "Ravager",
+      "blurb": "Heavyweight spinner behind a heavy plate. Everything it hits loses something.",
+      "chassisId": "ch-brick-h",
+      "paint": {
+        "primary": "#6f2f8f",
+        "secondary": "#ffcc33"
+      },
+      "attachments": [
+        {
+          "socketId": "wheel_fl",
+          "partId": "wh-l"
+        },
+        {
+          "socketId": "wheel_fr",
+          "partId": "wh-l"
+        },
+        {
+          "socketId": "wheel_rl",
+          "partId": "wh-l"
+        },
+        {
+          "socketId": "wheel_rr",
+          "partId": "wh-l"
+        },
+        {
+          "socketId": "weapon_top",
+          "partId": "wp-spinner-h"
+        },
+        {
+          "socketId": "armor_front",
+          "partId": "ar-heavy"
+        },
+        {
+          "socketId": "motor_bay",
+          "partId": "mt-torque"
+        }
+      ],
+      "derived": {
+        "totalMassKg": 162,
+        "weightClass": "heavy",
+        "armorTotal": 200,
+        "weaponRating": 150
+      }
     }
   },
   "damage": {
@@ -955,13 +1089,13 @@
     "debrisLifetimeSeconds": 12
   },
   "weightClasses": {
-    "$comment": "1 unit = 1 m, 1 mass unit = 1 kg. Mass is the sum of every PartDef.mass in a blueprint.",
+    "$comment": "1 unit = 1 m, 1 mass unit = 1 kg. Mass is the sum of every PartDef.mass in a blueprint. Lightweight raised 60 -> 80 on 2026-08-20: at 60 the lightest rolling bot (59 kg) could not carry any weapon.",
     "socketGridM": 0.02,
     "classes": [
       {
         "id": "light",
         "displayName": "Lightweight",
-        "maxMassKg": 60
+        "maxMassKg": 80
       },
       {
         "id": "middle",

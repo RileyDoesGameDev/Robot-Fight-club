@@ -1,11 +1,11 @@
 {
-  "$comment": "1 unit = 1 m, 1 mass unit = 1 kg. Mass is the sum of every PartDef.mass in a blueprint.",
+  "$comment": "1 unit = 1 m, 1 mass unit = 1 kg. Mass is the sum of every PartDef.mass in a blueprint. Lightweight raised 60 -> 80 on 2026-08-20: at 60 the lightest rolling bot (59 kg) could not carry any weapon.",
   "socketGridM": 0.02,
   "classes": [
     {
       "id": "light",
       "displayName": "Lightweight",
-      "maxMassKg": 60
+      "maxMassKg": 80
     },
     {
       "id": "middle",

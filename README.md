@@ -9,12 +9,12 @@ Solo project · 8-week window · feature-complete target: end of week 6.
 > a prebuilt bot**, not building one. Rationale, and what it costs the pitch, in
 > [docs/DESIGN.md](docs/DESIGN.md) §0.
 
-**Status: week 1 complete, week 2 mostly done.** The arena is blocked out and the **assembler works** — a
-`BotBlueprint` becomes a live bot with one breakable rigid body per part, verified deterministic. Two bots
-build themselves on scene load and drive. A full part-fitting **Workshop is implemented and working**, and
-is now kept as a stretch feature (it is also how the prebuilt roster gets authored). Next: the Bot Select
-screen, then the damage system — see [docs/VERTICAL-SLICE.md](docs/VERTICAL-SLICE.md) for the week 2–3
-gate.
+**Status: the Create → Test → Destroy loop closes.** Pick one of six prebuilt bots in **Bot Select**,
+load `Arena01`, and fight a scripted AI opponent with working damage, part degradation, detachment and
+knockout — all verified end to end. A full part-fitting **Workshop** also exists and is kept as a stretch
+feature (it is how the roster gets authored). What is missing is the *frame* around a match: a Test scene,
+automatic scene switching, and a match lifecycle that ends when the knockout fires — see
+[docs/VERTICAL-SLICE.md](docs/VERTICAL-SLICE.md).
 
 ![Two assembled bots facing off in Arena01](docs/images/assembled-bots.png)
 
@@ -51,12 +51,14 @@ Nothing in the browser is backed up.
 
 ```
 game/
-  scenes/     Arena01 + Workshop (both spawner-driven) + MainMenu, DemoCenter, PostMatch (placeholders)
-              BotSelect is the next scene to build (T-2.21)
-  scripts/    gameplay behaviours — BotDrive.ts, BotAssembler.ts, WorkshopController.ts
+  scenes/     Arena01, BotSelect, Workshop (all spawner-driven)
+              MainMenu, DemoCenter, PostMatch still placeholders
+  scripts/    BotAssembler, BotDrive, DamageSystem, WeaponController, AiDriver,
+              BotSelectController, WorkshopController
   data/
     parts/            14 PartDefs (chassis, wheels, weapons, armor, motors)
-    bots/             prebuilt BotBlueprints — player-slice, opp-wedge, opp-brick (roster grows in T-2.20)
+    bots/             6 prebuilt BotBlueprints + __selected.json (the persisted choice,
+                      overwritten by Bot Select)
     schemas/          JSON Schema for PartDef and BotBlueprint
     damage.json       damage-model constants (T-3.3)
     weight-classes.json, input-map.json
@@ -110,7 +112,10 @@ blueprint's cached mass and weight class match the sum of its parts.
 
 ## Controls
 
-`W`/`S` drive · `A`/`D` turn · `Space` weapon · `R` self-right · `Esc` pause
+`W`/`S` drive · `A`/`D` turn · `Space` spin up the weapon · `R` self-right · `Esc` pause
+
+In the editor: load `BotSelect`, pick a bot, press **CONFIRM**, then load `Arena01`. The arena reads
+whatever was confirmed.
 
 ## Git LFS
 

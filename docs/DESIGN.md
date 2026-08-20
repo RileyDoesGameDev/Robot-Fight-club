@@ -63,11 +63,17 @@ Win condition: **knockout** (all drive parts destroyed = immobilised, or chassis
 
 ### Weight classes
 
-| Class | Mass cap | Seed blueprint |
+| Class | Mass cap | Roster |
 |---|---|---|
-| Lightweight | ≤ 60 kg | — |
-| Middleweight | ≤ 110 kg | `player-slice` (98 kg), `opp-wedge` (89 kg) |
-| Heavyweight | ≤ 180 kg | `opp-brick` (168 kg) |
+| Lightweight | ≤ **80 kg** | Hornet (69) |
+| Middleweight | ≤ 110 kg | Doorstop (89), Blue Ruin (98), Grinder (107) |
+| Heavyweight | ≤ 180 kg | Ravager (162), Anvil (168) |
+
+**Lightweight was raised from 60 kg on 2026-08-20.** The lightest bot that can roll
+at all is 59 kg (`ch-wedge-m` + 4 × `wh-s` + `mt-speed`), and the cheapest weapon is
+10 kg — so at a 60 kg cap **no lightweight build could carry a weapon**. The class
+existed as a number but not as a thing you could field. 80 kg leaves room for a
+weapon and a plate.
 
 Every prebuilt bot must sit inside a class cap; `game/data/validate.js` fails the build if one does not, so the cap is enforced at authoring time rather than in a player-facing UI. Mass is always the **sum of every attached `PartDef.mass`** — never hand-authored. (The Workshop also refuses to save an over-cap bot, which is where T-4.8 landed.)
 
@@ -193,6 +199,59 @@ script hook crashes the engine's frame loop (`engine-bugs.md` BUG-011). So the s
 once and never deleted; re-running it means disabling its Script on one frame and re-enabling it on the
 next, which makes ScriptSystem build a fresh instance and call `onStart` again. Only Script-free bodies are
 ever deleted.
+
+---
+
+### Bot Select — the Create stage (T-2.20 – T-2.23)
+
+`game/scripts/BotSelectController.ts` and the `BotSelect` scene: an 8-entity display
+set (floor, turntable, backdrop, key + fill light, player-facing camera, controller
+marker) that becomes ~30 live entities once the UI and preview build themselves.
+
+Roster list on the left, spec card on the right, Prev / Next / **CONFIRM** below.
+The highlighted bot is previewed on the turntable through the *same* path the
+Workshop uses — write a marker named `BotSpawn:<id>:select` and let BotAssembler
+build it. Role `select` is **inert**: no drivetrain, no AI brain. That inert-role
+list lives in one place in the assembler so a future preview scene cannot silently
+acquire an opponent AI.
+
+A preview bot's weapon *does* still run, and that turned out to be worth keeping:
+measured drift is 0.007 m over 3.3 s, so it stays on the turntable, and the motor's
+reaction torque rotates it slowly — a free turntable effect. It only happens for
+spinner bots though, so a deliberate slow rotation is still a polish item.
+
+**The roster (T-2.20).** Six bots chosen to change how a match plays, not just to
+differ in mass:
+
+| Bot | Class | Mass | Weapon | Armour | Character |
+|---|---|---|---|---|---|
+| Hornet | light | 69 kg | passive wedge | 0 | fastest thing in the arena, no protection |
+| Doorstop | middle | 89 kg | passive wedge | 140 | quick wedge, nothing to jam |
+| Blue Ruin | middle | 98 kg | spinner | 90 | the balanced reference build |
+| Grinder | middle | 107 kg | spinner | 140 | slow to line up, hard to shove |
+| Ravager | heavy | 162 kg | spinner | 200 | heavy spinner behind a heavy plate |
+| Anvil | heavy | 168 kg | none | 480 | no weapon at all; wins by outlasting |
+
+**Hand-off (T-2.22).** CONFIRM writes the chosen blueprint to
+`/data/bots/__selected.json`. `Arena01`'s player spawner is
+`BotSpawn:__selected:player`, and BotAssembler already resolved an id from
+`/data/bots/<id>.json` when it was not in the bundle — so the selection rides
+machinery that already existed rather than needing new plumbing. `__`-prefixed files
+are runtime state and are excluded from the bundle, so the selection never shows up
+as a seventh roster entry.
+
+Real scene *switching* is still T-6.2; today you load `Arena01` yourself and it
+picks up whatever was confirmed.
+
+**Verified (T-2.23 gate).** Confirmed Ravager in `BotSelect` → loaded `Arena01` →
+the player bot was built as Ravager (four `wh-l` wheels, spinner, heavy plate, torque
+motor, 162 kg) → drove it with the spinner up and fought the AI, 30.2 / 31.0 damage
+exchanged across 4 damaged parts. `scene.validate` clean, zero errors.
+
+The spec card's speed figure is an **estimate**: the measured 4.46 m/s reference
+scaled by motor multiplier and inverse mass, then clamped to BotDrive's own
+`MAX_SPEED`. Unclamped it read 8.23 m/s for Hornet, which the drivetrain cannot
+reach — it is a comparison aid between bots, not a simulation.
 
 ---
 
