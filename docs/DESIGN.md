@@ -367,10 +367,45 @@ working — light 0.15 vs medium 0.30 reduction.
 
 | Part | `damaged` | `destroyed` |
 |---|---|---|
-| Wheel | drive torque × 0.55 on that side | that side stops driving |
+| Wheel | drive torque × 0.55 on that side | that wheel contributes nothing to its side |
 | Weapon | RPM × 0.6 | no attack |
-| Armor | reduced protection | hitbox exposed |
-| Motor | reduced output | drive dead |
+| Armor | its tier's reduction × 0.5 on the face it covers | that face of the chassis is bare |
+| Motor | both tracks × 0.6 | drive dead, and the bot is `immobilised` |
+
+**Armour is directional (T-5.4).** The chassis has no armour tier of its own; what
+protects it is the plate on the face that was actually struck. `armorReductionFor`
+takes the contact point into chassis-local space and matches it against the chassis'
+own armour socket offsets — from the socket table, not a hardcoded front/rear/left/
+right map, so a chassis added later needs no code change. Shear the front plate off a
+wedge and its nose is bare while its flanks stay covered, which is what makes a plate
+worth defending rather than just worth its hp. A hit matching no face (the roof, or
+underneath) is unprotected: no socket on any chassis points that way.
+
+**A drivetrain socket is registered once and never removed.** Authority was computed
+from live wheel entities, so culling a sheared wheel's debris (T-5.3) shrank the
+denominator and that track climbed back to full power seconds after being torn off.
+Wheels and motors now live in a per-bot socket registry that outlives their entities;
+`checkKnockout` counts off it too.
+
+Measured (2026-08-20), synthetic bot on ch-box-m with a medium plate on `armor_front`,
+3 000 N contact at ram factor:
+
+| Case | Result |
+|---|---|
+| Front face, plate on | 0.28 hp/step (reduction 0.30) |
+| Left flank, no plate there | 0.40 hp/step — directionality with the front plate still on |
+| Front face, plate sheared off | 0.40 hp/step — exposure ratio **1.4286** = 1/0.7 |
+| One wheel lost | `driveLeft` 1 → 0.5; still 0.5 after its debris is culled |
+| Motor damaged / destroyed | 0.5 → 0.3 and 1 → 0.6 / drive 0-0 + `immobilised` knockout |
+
+**Open balance question (for T-7.4).** With directional armour in, the exposure now
+fires almost immediately: in DemoCenter both bots shear their front plates on the
+first hard ram, because the armour mount is 2 500 N and a full-speed ram peaks at
+4 311 N. A plate is currently a one-hit sacrificial layer. That may be the right
+feel — it puts destruction on screen in the first seconds — but it should be a
+decision, not an accident: either raise the armour mount above ram force so plates
+are lost to weapons rather than to shoving, or keep it and accept plates as
+consumable.
 
 Progressive weakening (T-5.5): a `damaged` part's joint `breakForce` is multiplied by **0.5**, so accumulated hits eventually shear it off.
 

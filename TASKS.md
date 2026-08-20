@@ -263,12 +263,38 @@ Derived from `Battle_Bots_Project_Proposal (1).docx`. Every task is written to b
   - **Not implementable as written — BUG-013.** `physics.jointBroken` never fires and `Joint.breakForce` is never evaluated, verified in isolation (two 5 kg boxes, `breakForce: 100`, 50 000 N·s impulse, separation unchanged). The *detachment sequence* is done and working: DamageSystem shears a part whose contact force exceeds its cached mount strength, drops the `Joint`, marks it debris and emits `battlebots.partDetached` with a `reason` of `sheared` or `damage`. Verified live — `[Damage] player/armor_front (ar-heavy) -> destroyed [sheared]`, the AI's wedge exceeding a 2 500 N mount with no attrition first. **Still open:** the real subscription once the engine breaks joints (this workaround catches impact shears but not slow levering), and the VFX/sound legs, which are T-5.11 and the week-6 audio pass.
 - [x] **T-5.3** Handle the detached body's lifetime: it stays dynamic and interactive, becomes arena debris, and is culled after N seconds or M debris pieces to protect the frame budget.
   - A detached part stays dynamic and interactive, then is culled after `debrisLifetimeSeconds` (12 s) or early if more than `DEBRIS_CAP` (8) pieces are down, oldest first. Verified by entity count: a cold-boot Arena01 is 39 live entities, and after a shear plus its cull it settles at 38. Culling a detached weapon deletes an entity still carrying its `WeaponController`, which is only safe because BUG-011 was fixed.
-- [ ] **T-5.4** Make detachment mechanically meaningful: lost wheel → lost drive on that side; lost weapon → no attack; lost armor → exposed hitbox.
+- [x] **T-5.4** Make detachment mechanically meaningful: lost wheel → lost drive on that side; lost weapon → no attack; lost armor → exposed hitbox.
+  - All four legs of the degradation table now bite. **Wheel** and **weapon** were already wired (per-side authority; `ceilingRpm` plus the AI's `weaponLost`); **armour** and **motor** were not, and the wheel leg had a hole.
+  - **Armour is directional.** The chassis has no tier of its own, so plates protected it not at all — losing one changed nothing. `armorReductionFor` now takes the contact point into chassis-local space and matches it against the chassis' own armour socket offsets, so what protects the chassis is the plate on the face that was actually struck. Derived from the socket table rather than a hardcoded front/rear/left/right map, so a new chassis needs no code. A `damaged` plate gives half its tier (`damagedArmorReductionMultiplier`); a destroyed one gives nothing.
+  - **Motor.** `refreshDrive` ignored motors entirely, so "drive dead" was decorative. A motor now multiplies BOTH tracks — `damagedMotorOutputMultiplier` (0.6) when damaged, 0 when destroyed — and a bot with no live motor is `immobilised`, which is the other half of the knockout rule.
+  - **Bug found and fixed:** drive authority was computed from *live wheel entities*, so when a sheared wheel's debris was culled (T-5.3) the denominator shrank and that track climbed back to full power a few seconds after being torn off. Wheels and motors are now a per-bot socket registry that is written once and never removed; `checkKnockout` counts off it too, which retires the `wheelsSeen` high-water hack.
+  - **Measured** against the live script driven by a synthetic bot (ch-box-m, ar-med on `armor_front`, mt-balanced), 3 000 N contact, ram factor, 1/60 s steps: **(V)**
+
+    | Case | Result |
+    |---|---|
+    | Front face, medium plate on | **0.28 hp/step** (reduction 0.30) |
+    | Left flank, no plate fitted there | **0.40 hp/step** — directionality, with the front plate still on |
+    | Front plate at 3 000 N vs its 2 500 N mount | `destroyed`, `partDetached reason=sheared` |
+    | Front face, plate gone | **0.40 hp/step** — exposure ratio **1.4286** = 1/0.7 exactly |
+    | Front-left wheel sheared | `driveLeft` 1 → **0.5**, `driveRight` 1 |
+    | …after that wheel's debris is culled | `driveLeft` **still 0.5** (was climbing back to 1) |
+    | Motor `damaged` (step 21) | `driveLeft` **0.3** = 0.5 × 0.6, `driveRight` **0.6** |
+    | Motor `destroyed` (step 42) | drive **0 / 0** + `knockout { reason: "immobilised" }` |
 - [x] **T-5.5** Add progressive weakening — a `damaged` part's joint `breakForce` is reduced so accumulated hits eventually shear it off.
   - A part reaching `damaged` has its joint `breakForce` multiplied by `damagedBreakForceMultiplier` (0.5), so accumulated hits shear it off sooner.
 - [x] **T-5.6** Curate the breakable set explicitly (proposal scope cut): wheels, weapon head, armor plates. **Not** every part, and **no** free-fracture.
   - Enforced by a `BREAKABLE` set in `DamageSystem.ts` (`wheel`, `weapon`, `armor`) rather than by "anything that is not the chassis", which had been letting motors detach. A destroyed motor now stays bolted in and simply stops working. No free-fracture: a part detaches whole or stays put.
-- [ ] **T-5.7** Verify a bot mid-disassembly stays physically stable — no NaN transforms, no exploding joints. Run `scene_validate` during play. **(V) (R)**
+- [x] **T-5.7** Verify a bot mid-disassembly stays physically stable — no NaN transforms, no exploding joints. Run `scene_validate` during play. **(V) (R)**
+  - **Verified.** DemoCenter, Ravager vs Doorstop, player bot reduced to chassis + motor + 2 wheels (front plate sheared by the opponent on its own; the other front-left wheel, rear-right wheel and the spinner head dropped mid-simulation), then 20 s stepped at the fixed 60 Hz with `scene.validate` every 5 s over all 16 bot bodies.
+
+    | Sample | validate | non-finite transforms | max speed | max spin |
+    |---|---|---|---|---|
+    | 5 s | ok, 0/0 | 0 | 0.38 m/s | 2.6 rad/s |
+    | 10 s | ok, 0/0 | 0 | 0.22 m/s | 1.4 rad/s |
+    | 15 s | ok, 0/0 | 0 | 0.56 m/s | 3.7 rad/s |
+    | 20 s | ok, **1 warning** | 0 | 23.05 m/s | 2.3 rad/s |
+
+  - No NaN, no Infinity, no exploding joint, no engine errors. The single warning is **not** an instability: it is the sheared front-left wheel, which rolled out past the arena wall (x −7.5, arena half-extent 5.6) and was in free fall at y −28.5 — hence the 23 m/s, which is gravity, not the solver. It is culled by the 12 s debris lifetime. Worth knowing that debris can leave the arena at all; a lip or a kill-plane belongs with the hazard work in T-5.12.
 - [x] **T-5.8** Verify match reset restores all authored joints and part health cleanly (depends on T-1.15). **(V)**
   - **Reloading the scene *is* the reset.** Part health lives in DamageSystem's own Map and force-broken joints are runtime state, so a fresh `project.loadScene` restores both with no bespoke teardown — Rematch is one call. Exercised back to back: a practice round, an opponent swap (which also reloads), and a full timed match, with `scene.validate` clean on cold boots of both scenes and no errors. An explicit assertion that every authored joint is back stays with T-1.15.
 

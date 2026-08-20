@@ -26,7 +26,9 @@
  *
  *   `weaponFactor` comes from the STRIKING part (a spinner bites harder than a
  *   shove — `ram` is the factor for anything that is not a weapon).
- *   `armorReduction` comes from the STRUCK part's own tier.
+ *   `armorReduction` comes from the STRUCK part: its own tier for an ordinary part,
+ *   and for the CHASSIS the plate covering the face that was hit — see
+ *   `armorReductionFor`.
  *
  * WHAT COUNTS AS A HIT (T-3.8)
  *   Only inter-bot pairs. Two parts of the same bot never damage each other, and
@@ -62,12 +64,31 @@ const DEBRIS_CAP = 8;
  */
 const BREAKABLE = new Set(["wheel", "weapon", "armor"]);
 
+/** Rotate vector v by quaternion q (x,y,z,w). */
+function rotate(q, v) {
+  const [x, y, z, w] = q;
+  const ix = w * v[0] + y * v[2] - z * v[1];
+  const iy = w * v[1] + z * v[0] - x * v[2];
+  const iz = w * v[2] + x * v[1] - y * v[0];
+  const iw = -x * v[0] - y * v[1] - z * v[2];
+  return [
+    ix * w + iw * -x + iy * -z - iz * -y,
+    iy * w + iw * -y + iz * -x - ix * -z,
+    iz * w + iw * -z + ix * -y - iy * -x,
+  ];
+}
+
+/** World -> body-local, for asking WHICH FACE of a chassis a contact landed on. */
+function invRotate(q, v) {
+  return rotate([-q[0], -q[1], -q[2], q[3]], v);
+}
+
 export default function create() {
   let bundle = null;
   let dmg = null;
   /** entity -> { role, socketId, partId, category, hp, maxHp, state, armorTier, isChassis } */
   const parts = new Map();
-  /** role -> { chassis, knockedOut, damageDealt } */
+  /** role -> { chassis, knockedOut, damageDealt, wheels, motors } */
   const bots = new Map();
   let scanCooldown = 0;
   let offReport = null;
@@ -76,6 +97,36 @@ export default function create() {
   const spin = new Map();
   /** detached part entity -> seconds since it left its bot (T-5.3) */
   const debris = new Map();
+  /** entity -> bodyState, cleared each fixed step so a contact loop asks once */
+  const bodyCache = new Map();
+
+  /**
+   * A bot's drivetrain sockets are registered once and NEVER removed, even after the
+   * part's entity is gone. A wheel culled as debris is still a wheel this bot LOST,
+   * and counting live entities instead let drive authority climb back the moment the
+   * debris was swept up — half a track returning to full power seconds after being
+   * torn off.
+   */
+  function newBot(chassis) {
+    return { chassis, knockedOut: false, damageDealt: 0, wheels: new Map(), motors: new Map() };
+  }
+
+  /**
+   * Unit direction, in chassis-local space, of every socket that takes a plate —
+   * the faces armour can cover. Read from the chassis' own socket table rather than
+   * hardcoding front/rear/left/right, so a chassis added later needs no code change.
+   */
+  function armorFaces(def) {
+    const out = [];
+    for (const s of (def && def.sockets) || []) {
+      if (!Array.isArray(s.accepts) || s.accepts.indexOf("armor") < 0) continue;
+      const p = s.position || [0, 0, 0];
+      const len = Math.hypot(p[0], p[1], p[2]);
+      if (len < 1e-6) continue;
+      out.push({ id: s.id, dir: [p[0] / len, p[1] / len, p[2] / len] });
+    }
+    return out;
+  }
 
   /**
    * The mount strength this part hangs on, cached so the contact loop does not
@@ -128,8 +179,9 @@ export default function create() {
         }
         const hp = def ? def.hp : 300;
         parts.set(e, { role, socketId: "chassis", partId: def ? def.id : "unknown",
-          category: "chassis", hp, maxHp: hp, state: "intact", armorTier: "none", isChassis: true });
-        if (!bots.has(role)) bots.set(role, { chassis: e, knockedOut: false, damageDealt: 0, wheelsSeen: 0 });
+          category: "chassis", hp, maxHp: hp, state: "intact", armorTier: "none", isChassis: true,
+          sockets: (def && def.sockets) || [], armorSockets: armorFaces(def) });
+        if (!bots.has(role)) bots.set(role, newBot(e));
         else bots.get(role).chassis = e;
         continue;
       }
@@ -149,30 +201,44 @@ export default function create() {
       parts.set(e, { role, socketId, partId, category: def.category, hp: def.hp, maxHp: def.hp,
         state: "intact", armorTier: def.armorTier || "none", isChassis: false,
         breakForce: jointBreakForce(call, e) });
-      if (!bots.has(role)) bots.set(role, { chassis: 0, knockedOut: false, damageDealt: 0, wheelsSeen: 0 });
-      if (def.category === "wheel") {
-        const bk = bots.get(role);
-        // High-water mark, not a live count: a wheel that has been culled as debris
-        // is still a wheel this bot LOST, so the denominator must not shrink.
-        let live = 0;
-        for (const r2 of parts.values()) if (r2.role === role && r2.category === "wheel") live++;
-        if (live > bk.wheelsSeen) bk.wheelsSeen = live;
-      }
+      if (!bots.has(role)) bots.set(role, newBot(0));
+      const bk = bots.get(role);
+      if (def.category === "wheel" && !bk.wheels.has(socketId)) bk.wheels.set(socketId, { state: "intact" });
+      if (def.category === "motor" && !bk.motors.has(socketId)) bk.motors.set(socketId, { state: "intact" });
     }
     // forget entities that no longer exist (culled debris, scene reload)
     for (const e of [...parts.keys()]) if (!seen.has(e)) parts.delete(e);
   }
 
-  /** Per-side drive authority from surviving wheels, written into BotDrive params. */
+  /** Which track a wheel socket sits on — by its x offset, falling back to its id. */
+  function sideOfSocket(role, socketId) {
+    const bot = bots.get(role);
+    const chassisRec = bot && bot.chassis ? parts.get(bot.chassis) : null;
+    for (const s of (chassisRec && chassisRec.sockets) || []) {
+      if (s.id !== socketId) continue;
+      if (s.position && s.position[0] !== 0) return s.position[0] < 0 ? "left" : "right";
+      break;
+    }
+    return /_(fl|rl)$/.test(socketId) ? "left" : "right";
+  }
+
+  /**
+   * Per-side drive authority, written into BotDrive params (T-3.6, T-5.4).
+   *
+   *   wheel  damaged   -> contributes damagedDriveTorqueMultiplier to its side
+   *          destroyed -> contributes nothing to its side
+   *   motor  damaged   -> BOTH sides scaled by damagedMotorOutputMultiplier
+   *          destroyed -> drive dead
+   *
+   * The motor is the whole drivetrain, so it multiplies both tracks rather than
+   * averaging into one. Its state is the worst of any fitted motor — a bot carrying
+   * two of them is not rescued by the healthy one.
+   */
   function refreshDrive(call, role) {
     const bot = bots.get(role);
     if (!bot || !bot.chassis) return;
     const side = { left: [], right: [] };
-    for (const rec of parts.values()) {
-      if (rec.role !== role || rec.category !== "wheel") continue;
-      const s = /_(fl|rl)$/.test(rec.socketId) ? "left" : "right";
-      side[s].push(rec);
-    }
+    for (const [socketId, w] of bot.wheels) side[sideOfSocket(role, socketId)].push(w);
     const authority = (list) => {
       if (!list.length) return 0;
       let sum = 0;
@@ -181,6 +247,11 @@ export default function create() {
       }
       return sum / list.length;
     };
+    let motorFactor = 1;
+    for (const m of bot.motors.values()) {
+      const f = m.state === "destroyed" ? 0 : m.state === "damaged" ? dmg.damagedMotorOutputMultiplier : 1;
+      if (f < motorFactor) motorFactor = f;
+    }
     // Read-modify-write: `params` is one field, so patching it REPLACES the whole
     // object. AiDriver writes `intent` into the same params, and a blind write here
     // would delete the AI's commands every time a wheel changed state.
@@ -191,11 +262,69 @@ export default function create() {
       component: "Script",
       patch: {
         params: Object.assign({}, existing, {
-          driveLeft: authority(side.left),
-          driveRight: authority(side.right),
+          driveLeft: authority(side.left) * motorFactor,
+          driveRight: authority(side.right) * motorFactor,
         }),
       },
     });
+  }
+
+  function bodyStateOf(call, entity) {
+    if (bodyCache.has(entity)) return bodyCache.get(entity);
+    const r = call("physics.bodyState", { entity });
+    const b = r && !r.isError ? r.content : null;
+    bodyCache.set(entity, b);
+    return b;
+  }
+
+  /**
+   * How much of an incoming hit the STRUCK part shrugs off (T-3.3, T-5.4).
+   *
+   * An ordinary part uses its own tier, halved once it is `damaged` — the "reduced
+   * protection" leg of the degradation table.
+   *
+   * The CHASSIS is directional. It has no tier of its own; what protects it is the
+   * plate on the face that was actually struck, found by taking the contact point
+   * into chassis-local space and matching it against the chassis' own armour socket
+   * offsets. Shear the front plate off a wedge and its nose is bare while its flanks
+   * stay covered — that is what "hitbox exposed" has to mean mechanically, and it is
+   * what makes a plate worth defending rather than just worth its own hp. A hit that
+   * matches no face (the roof, or underneath) is unprotected, which is correct: no
+   * socket on any chassis points that way.
+   */
+  function armorReductionFor(call, victim, victimEntity, point) {
+    const tiered = (rec) => {
+      const base = dmg.armorReduction[rec.armorTier] || 0;
+      return rec.state === "damaged" ? base * dmg.damagedArmorReductionMultiplier : base;
+    };
+    if (!victim.isChassis) return tiered(victim);
+
+    const faces = victim.armorSockets;
+    if (!faces || !faces.length || !point) return 0;
+    const body = bodyStateOf(call, victimEntity);
+    if (!body || !body.rotation || !body.position) return 0;
+    const q = [body.rotation.x, body.rotation.y, body.rotation.z, body.rotation.w];
+    const local = invRotate(q, [
+      point.x - body.position.x, point.y - body.position.y, point.z - body.position.z,
+    ]);
+    const len = Math.hypot(local[0], local[1], local[2]);
+    if (len < 1e-6) return 0;
+
+    let bestId = null;
+    let bestDot = dmg.armorCoverageDotMin;
+    for (const f of faces) {
+      const d = (local[0] * f.dir[0] + local[1] * f.dir[1] + local[2] * f.dir[2]) / len;
+      if (d > bestDot) { bestDot = d; bestId = f.id; }
+    }
+    if (!bestId) return 0;
+
+    for (const rec of parts.values()) {
+      if (rec.role !== victim.role || rec.category !== "armor" || rec.socketId !== bestId) continue;
+      // A destroyed plate has already left the bot (it is debris until it is culled),
+      // so the face it was covering is open.
+      return rec.state === "destroyed" ? 0 : tiered(rec);
+    }
+    return 0; // nothing fitted on that face — bare from the start
   }
 
   function setColor(call, entity, color) {
@@ -243,6 +372,9 @@ export default function create() {
     engine.console.log("[Damage] " + rec.role + "/" + rec.socketId + " (" + rec.partId + ") -> " + next
       + (reason ? " [" + reason + "]" : ""));
 
+    const bot = bots.get(rec.role);
+    if (bot && rec.category === "wheel" && bot.wheels.has(rec.socketId)) bot.wheels.get(rec.socketId).state = next;
+    if (bot && rec.category === "motor" && bot.motors.has(rec.socketId)) bot.motors.get(rec.socketId).state = next;
     if (rec.category === "wheel" || rec.category === "motor") refreshDrive(call, rec.role);
     checkKnockout(call, engine, rec.role);
   }
@@ -253,15 +385,21 @@ export default function create() {
     if (!bot || bot.knockedOut) return;
 
     let chassisDead = false;
-    let wheelsAlive = 0;
     for (const rec of parts.values()) {
-      if (rec.role !== role) continue;
-      if (rec.isChassis && rec.state === "destroyed") chassisDead = true;
-      if (rec.category === "wheel" && rec.state !== "destroyed") wheelsAlive++;
+      if (rec.role === role && rec.isChassis && rec.state === "destroyed") chassisDead = true;
     }
-    // Compared against the high-water mark, so a wheel whose entity is gone counts
-    // as lost rather than simply forgotten.
-    const immobilised = (bot.wheelsSeen || 0) > 0 && wheelsAlive < 2;
+    // Counted off the socket registry rather than live entities, so a wheel whose
+    // entity has been culled still counts as lost rather than simply forgotten.
+    let wheelsAlive = 0;
+    for (const w of bot.wheels.values()) if (w.state !== "destroyed") wheelsAlive++;
+    let motorsAlive = 0;
+    for (const m of bot.motors.values()) if (m.state !== "destroyed") motorsAlive++;
+    // Both ways a bot stops moving: too few wheels left to drive on, or the drive
+    // motor itself killed. The motor leg is what makes the degradation table's
+    // "drive dead" an end state instead of a bot that sits still spinning its weapon
+    // until the clock runs out.
+    const immobilised = (bot.wheels.size > 0 && wheelsAlive < 2)
+      || (bot.motors.size > 0 && motorsAlive === 0);
     if (!chassisDead && !immobilised) return;
 
     bot.knockedOut = true;
@@ -307,6 +445,9 @@ export default function create() {
     },
 
     onFixedUpdate({ engine, call, dt }) {
+      // Poses are read for directional armour and are only valid for this step.
+      bodyCache.clear();
+
       // Re-scan occasionally so late-spawning bots are picked up without
       // paying a full query every step.
       scanCooldown -= dt;
@@ -357,7 +498,7 @@ export default function create() {
         const excess = force - dmg.damageFloorN;
         if (excess <= 0) continue;
 
-        const strike = (striker, victim, victimEntity, strikerEntity) => {
+        const strike = (striker, victim, victimEntity, strikerEntity, point) => {
           if (victim.state === "destroyed") return;
 
           // Force shear (T-5.1, T-5.5). `Joint.breakForce` is accepted and echoed
@@ -384,7 +525,7 @@ export default function create() {
             const frac = spin.has(strikerEntity) ? spin.get(strikerEntity) : 0;
             factor = dmg.weaponFactor.ram + (factor - dmg.weaponFactor.ram) * frac;
           }
-          const reduction = dmg.armorReduction[victim.armorTier] || 0;
+          const reduction = armorReductionFor(call, victim, victimEntity, point);
           const amount = excess * dmg.damageScaleHpPerNs * factor * (1 - reduction) * dt;
           if (amount <= 0) return;
 
@@ -410,9 +551,10 @@ export default function create() {
           }
         };
 
-        // Each side strikes the other.
-        strike(A, B, c.b, c.a);
-        strike(B, A, c.a, c.b);
+        // Each side strikes the other. Both are handed the same contact point — which
+        // face it landed on is answered per victim, in that victim's own frame.
+        strike(A, B, c.b, c.a, c.point);
+        strike(B, A, c.a, c.b, c.point);
       }
     },
   };

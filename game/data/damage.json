@@ -20,6 +20,9 @@
   "damagedBreakForceMultiplier": 0.5,
   "damagedDriveTorqueMultiplier": 0.55,
   "damagedWeaponRpmMultiplier": 0.6,
+  "damagedMotorOutputMultiplier": 0.6,
+  "damagedArmorReductionMultiplier": 0.5,
+  "armorCoverageDotMin": 0.35,
   "contactForceEventThresholdN": 400,
   "debrisLifetimeSeconds": 12
 }
