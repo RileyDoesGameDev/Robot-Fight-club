@@ -48,6 +48,20 @@ const BUNDLE_PATH = "/data/bundle.json";
 const COL_DAMAGED = 0x8a6a1f;
 const COL_DESTROYED = 0x3a2a2a;
 
+/**
+ * Most debris pieces allowed on the floor at once. Past this the oldest is culled
+ * early rather than waiting out its lifetime, so a scrappy match cannot outpace the
+ * timer. Eight covers a full bot's worth of shed parts.
+ */
+const DEBRIS_CAP = 8;
+
+/**
+ * What can come off (T-5.6). Explicitly curated rather than "anything not the
+ * chassis": a motor is internal, so a dead motor stays bolted in and simply stops
+ * working. No free-fracture — a part either detaches whole or stays put.
+ */
+const BREAKABLE = new Set(["wheel", "weapon", "armor"]);
+
 export default function create() {
   let bundle = null;
   let dmg = null;
@@ -60,6 +74,19 @@ export default function create() {
   let offWeapon = null;
   /** weapon entity -> 0..1 of its target rpm, from battlebots.weaponState */
   const spin = new Map();
+  /** detached part entity -> seconds since it left its bot (T-5.3) */
+  const debris = new Map();
+
+  /**
+   * The mount strength this part hangs on, cached so the contact loop does not
+   * re-read a component per contact. Authored per socket by the assembler and
+   * weakened when the part becomes `damaged`.
+   */
+  function jointBreakForce(call, e) {
+    const j = call("scene.getComponent", { entity: e, component: "Joint" });
+    if (!j || j.isError || !j.content || !j.content.joints.length) return 0;
+    return j.content.joints[0].breakForce || 0;
+  }
 
   function nameOf(call, e) {
     const r = call("scene.getComponent", { entity: e, component: "Name" });
@@ -120,7 +147,8 @@ export default function create() {
       if (!partId) continue;
       const def = bundle.parts[partId];
       parts.set(e, { role, socketId, partId, category: def.category, hp: def.hp, maxHp: def.hp,
-        state: "intact", armorTier: def.armorTier || "none", isChassis: false });
+        state: "intact", armorTier: def.armorTier || "none", isChassis: false,
+        breakForce: jointBreakForce(call, e) });
       if (!bots.has(role)) bots.set(role, { chassis: 0, knockedOut: false, damageDealt: 0, wheelsSeen: 0 });
       if (def.category === "wheel") {
         const bk = bots.get(role);
@@ -176,7 +204,7 @@ export default function create() {
   }
 
   /** intact -> damaged -> destroyed, with the mechanical consequences (T-3.5, T-3.6, T-5.5). */
-  function applyState(call, engine, entity, rec, next) {
+  function applyState(call, engine, entity, rec, next, reason) {
     if (rec.state === next) return;
     rec.state = next;
 
@@ -189,23 +217,31 @@ export default function create() {
           ...link, breakForce: link.breakForce * dmg.damagedBreakForceMultiplier,
         }));
         call("scene.setComponent", { entity, component: "Joint", patch: { joints } });
+        rec.breakForce = joints[0].breakForce || 0;
       }
     } else if (next === "destroyed") {
       setColor(call, entity, COL_DESTROYED);
-      if (!rec.isChassis) {
+      if (BREAKABLE.has(rec.category)) {
         // Detach: drop the Joint so the part becomes free arena debris (T-5.2).
         // Detaching rather than hiding is deliberate — a part that mechanically
         // left the bot should be visible on the floor, which reads better than
         // something vanishing.
         const j = call("scene.getComponent", { entity, component: "Joint" });
         if (j && !j.isError && j.content) call("scene.removeComponent", { entity, component: "Joint" });
+        rec.breakForce = 0;
+        debris.set(entity, 0);
+        engine.mcp.emit("battlebots.partDetached", {
+          entity, role: rec.role, socketId: rec.socketId, partId: rec.partId,
+          category: rec.category, reason: reason || "damage",
+        });
       }
     }
 
     engine.mcp.emit("battlebots.partState", {
       entity, role: rec.role, socketId: rec.socketId, partId: rec.partId, state: next,
     });
-    engine.console.log("[Damage] " + rec.role + "/" + rec.socketId + " (" + rec.partId + ") -> " + next);
+    engine.console.log("[Damage] " + rec.role + "/" + rec.socketId + " (" + rec.partId + ") -> " + next
+      + (reason ? " [" + reason + "]" : ""));
 
     if (rec.category === "wheel" || rec.category === "motor") refreshDrive(call, rec.role);
     checkKnockout(call, engine, rec.role);
@@ -285,6 +321,29 @@ export default function create() {
         for (const role of bots.keys()) checkKnockout(call, engine, role);
       }
 
+      // Debris lifetime (T-5.3). A detached part stays dynamic and interactive for
+      // a while — it is arena clutter you can shove and be tripped by — then it is
+      // culled so a long match cannot grow the body count without bound. Deleting a
+      // Script-bearing entity from a hook is safe now that BUG-011 is fixed, which
+      // matters because a detached weapon still carries its WeaponController.
+      if (debris.size) {
+        let oldest = 0;
+        let oldestAge = -1;
+        for (const [ent, age] of debris) {
+          const next = age + dt;
+          debris.set(ent, next);
+          if (next > oldestAge) { oldestAge = next; oldest = ent; }
+        }
+        const overCap = debris.size > DEBRIS_CAP;
+        for (const [ent, age] of Array.from(debris)) {
+          if (age <= dmg.debrisLifetimeSeconds && !(overCap && ent === oldest)) continue;
+          debris.delete(ent);
+          parts.delete(ent);
+          call("scene.deleteEntity", { entity: ent });
+          engine.mcp.emit("battlebots.debrisCulled", { entity: ent, ageSeconds: Math.round(age * 10) / 10 });
+        }
+      }
+
       const res = call("physics.getContacts", {});
       if (!res || res.isError || !res.content) return;
 
@@ -300,6 +359,18 @@ export default function create() {
 
         const strike = (striker, victim, victimEntity, strikerEntity) => {
           if (victim.state === "destroyed") return;
+
+          // Force shear (T-5.1, T-5.5). `Joint.breakForce` is accepted and echoed
+          // back by the engine but never evaluated, and `physics.jointBroken` never
+          // fires (BUG-013) — so a big enough hit is resolved here instead, from the
+          // same contact force the damage math already has. Without this the whole
+          // breakForce table is decorative and a weakened mount never actually
+          // shears, which is the mechanic T-5.5 exists to provide.
+          if (BREAKABLE.has(victim.category) && victim.breakForce > 0 && force >= victim.breakForce) {
+            victim.hp = 0;
+            applyState(call, engine, victimEntity, victim, "destroyed", "sheared");
+            return;
+          }
           let factor = dmg.weaponFactor.ram;
           if (striker.category === "weapon") {
             const st = bundle.parts[striker.partId].stats || {};

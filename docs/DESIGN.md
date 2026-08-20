@@ -562,7 +562,28 @@ visible from the start rather than appearing on a result.
 
 ## 6. Destruction (T-5.1 – T-5.6)
 
-**No fracture solver is needed.** `Joint.breakForce` ships natively (confirmed, T-1.13): the joint disconnects and emits `physics.jointBroken` when its solver impulse exceeds `breakForce × timestep`. The "custom breakable-joint system" in the proposal is therefore *configuration plus event handling*.
+**No fracture solver is needed** — but we do have to enforce the break ourselves.
+
+The original plan was that `Joint.breakForce` ships natively, so the proposal's "custom
+breakable-joint system" would reduce to *configuration plus event handling*. **That was
+wrong, and the correction is 2026-08-20's main finding.** T-1.13 confirmed the *field*
+exists; it never tested that a joint actually breaks. It does not: `breakForce` is stored
+and echoed back faithfully, but no break check runs and `physics.jointBroken` never fires
+(**BUG-013** — two 5 kg boxes on a `breakForce: 100` joint survive a 50 000 N·s impulse
+with their separation unchanged to the millimetre).
+
+So detachment is resolved in `DamageSystem` instead, off the contact force it already
+reads for the damage math: a part whose contact force exceeds its cached mount strength is
+detached on the spot. Two consequences worth being honest about:
+
+- **Impact shears work; levering does not.** Contact force on the *part* is not the
+  joint's solver impulse, so a part slowly prised off by sustained load will not come
+  away — only a hard enough single hit does. In a sport that is mostly impacts this is a
+  small loss, and it is why the constant is called a mount strength rather than a break
+  force.
+- **The mechanic is real now, where before it was decorative.** Until this landed the
+  entire table below did nothing, and T-5.5's progressive weakening was halving a number
+  nothing consulted.
 
 Seed `breakForce` by socket category:
 
@@ -573,7 +594,17 @@ Seed `breakForce` by socket category:
 | Motor | 9 000 |
 | Weapon head | 12 000 |
 
-Curated breakable set (adopted scope cut): **wheels, weapon head, armor plates.** Not every part, and no free-fracture.
+Curated breakable set (adopted scope cut, enforced by `BREAKABLE` in `DamageSystem.ts`):
+**wheels, weapon head, armor plates.** Not every part, and no free-fracture — a part
+either detaches whole or stays put. A motor is internal, so a destroyed motor stays
+bolted in and simply stops working; that keeps "what can fall off" a list you can read
+rather than a consequence of which parts happen to have a joint.
+
+**Debris (T-5.3).** A detached part stays dynamic and interactive — arena clutter you can
+shove and be tripped by — then is culled after `debrisLifetimeSeconds` (12 s), or early if
+more than `DEBRIS_CAP` (8) pieces are on the floor, so a scrappy match cannot outgrow the
+timer. Culling a detached weapon means deleting an entity that still carries its
+`WeaponController`, which is only safe because BUG-011 was fixed.
 
 A force-break is **runtime state, not an edit** — the authored joint returns on scene reload, which is what makes match reset tractable (still to be verified end-to-end, T-1.15 / T-5.8).
 

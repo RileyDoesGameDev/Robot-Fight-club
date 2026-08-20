@@ -9,9 +9,12 @@ Engine source referenced: `C:\Users\KOBI 2\Documents\Kobi\3d-game-engine-mcp-nat
 
 ---
 
-## ✅ All closed — 2026-08-20
+## ✅ All closed — 2026-08-20 · ⚠️ one new bug filed since
 
-Every one of the 12 BUG entries and 3 of the 5 LIM entries below has been fixed.
+Every one of the original 12 BUG entries and 3 of the 5 LIM entries below has been fixed.
+**BUG-013 was filed 2026-08-20 after the fixes** and is open: `Joint.breakForce` is stored
+but never evaluated, so `physics.jointBroken` never fires. It blocks the whole
+force-driven destruction design (week 5).
 See [engine-fixes.md](../engine-fixes.md) for what changed and what to re-test.
 The entries are kept as filed, because the reasoning and repros are still the
 record of how each was found.
@@ -327,6 +330,65 @@ the `mode`/`colliders` behaviour.
 
 **Side note** `viewport.*` reports "no editor viewport attached — open the Scene tab" for the same
 condition, so the diagnosis exists; only `captureScreenshot` hides it.
+
+---
+
+## BUG-013 🔴 `Joint.breakForce` is never evaluated — `physics.jointBroken` never fires
+
+**Status** OPEN, filed 2026-08-20.
+
+`breakForce` is accepted on a `Joint`, persisted, and echoed back correctly by
+`physics.listJoints` — including updates written later via `scene.setComponent`, which we
+verified propagate to the live joint. But no break check ever runs: the joint holds
+under arbitrary load, and the `physics.jointBroken` channel (declared in
+`events.listChannels` as *"A joint exceeded its breakForce threshold and was removed"*)
+never emits.
+
+**Repro** — two 5 kg boxes, one fixed joint, `breakForce: 100`, then a **50 000 N·s**
+impulse:
+
+    a = createEntity(dynamic box, mass 5, at [20, 5.0, 0])
+    b = createEntity(dynamic box, mass 5, at [20, 5.5, 0])
+    addComponent(b, "Joint", { joints: [{ kind: "fixed", b: a,
+        anchorB: [0, 0.5, 0], breakForce: 100 }] })
+    stepFrames(5)
+    applyImpulse(b, { x: 0, y: 50000, z: 0 })
+    stepFrames(10)
+
+Result: joint still present with `breakForce: 100`, separation **exactly 0.500 m**
+(unchanged from authored), `physics.jointBroken` events: **0**.
+
+Also reproduced on real content: dropping all 12 mounts of an assembled 162 kg bot to
+`breakForce: 1` and yanking a wheel with 6 000 N·s broke nothing.
+
+**Why it hurts** This is the single feature the destruction design rests on. Our
+`DESIGN.md` §6 opens with *"no fracture solver is needed — `Joint.breakForce` ships
+natively"*, which is how the proposal's "custom breakable-joint system" got scoped down
+to configuration plus event handling. With the check missing:
+
+- the whole authored `breakForce` table (2 500 N armour / 4 000 N wheel / 9 000–12 000 N
+  weapon mounts) is decorative;
+- T-5.5's progressive weakening — halving a damaged part's `breakForce` so accumulated
+  hits eventually shear it off — applies the multiplier to nothing;
+- T-5.2 as written ("subscribe to `physics.jointBroken` and drive the detachment
+  sequence") is not implementable at all.
+
+The failure is silent in the worst way: every value round-trips, so the feature looks
+wired up from the caller's seat and only a deliberate over-force test reveals it.
+
+**Workaround** (in `DamageSystem.ts`) Enforce it ourselves. The contact loop already
+reads `maxForce` per contact for the damage math, so a part whose contact force exceeds
+its cached mount strength is detached on the spot — `hp = 0`, drop the `Joint`, mark it
+debris. That restores the mechanic and costs nothing extra, but it is an approximation:
+contact force on the *part* is not the same as the *joint's* solver impulse, so a part
+levered off slowly by a sustained load will not shear the way a real constraint check
+would. Only impact shears work.
+
+**Fix** Compare each joint's solver impulse against `breakForce × timestep` after the
+solve, remove the joint when it exceeds, and emit `physics.jointBroken` with
+`{ joint, a, b, force }`. A test that authors a joint and over-forces it would have
+caught this — worth adding alongside, since the channel and the field both already exist
+and only the check is missing.
 
 ---
 
