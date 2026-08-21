@@ -1,0 +1,68 @@
+{
+  "$comment": "Every sound in the game is SYNTHESISED at load from these numbers (T-6.16). There are no .wav files in the repo and no sourced audio. That is a deliberate match for the greybox art: the visuals are untextured primitives, so the audio is untextured waveforms, and the two read as one intentional style rather than as placeholder. It also keeps the build tiny and the whole mix tunable without a recompile. Colours of noise and exact frequencies were chosen by ear against the arena, not derived.",
+
+  "sampleRate": 22050,
+
+  "$busNote": "T-6.20. Every clip names a bus; the played volume is master * bus * the clip's own gain. Buses are the mix, clip gain is the balance within a bus. `crowd` sits low on purpose — it is texture under the fight, and the moment it competes with an impact it is wrong.",
+  "buses": {
+    "master": 0.9,
+    "sfx": 1,
+    "weapons": 0.85,
+    "crowd": 0.3,
+    "ui": 0.7
+  },
+
+  "$clipNote": "kind: saw (buzzy periodic, for motors and blades), noise (broadband), clank (noise burst plus a ringing partial, for metal), sweep (a glide, for stings). `loop` clips are built to be seamless — a whole number of cycles at the given frequency.",
+  "clips": {
+    "motor": {
+      "kind": "saw", "seconds": 0.5, "freq": 72, "loop": true,
+      "gain": 0.3, "noise": 0.12, "bus": "sfx",
+      "note": "Low and dull. Pitched by road speed at runtime (T-6.18)."
+    },
+    "spin": {
+      "kind": "saw", "seconds": 0.4, "freq": 190, "loop": true,
+      "gain": 0.24, "noise": 0.05, "harmonic": 2, "bus": "weapons",
+      "note": "The blade. Pitch tracks actual rpm, so spin-up is audible before it is dangerous."
+    },
+    "impact": {
+      "kind": "clank", "seconds": 0.26, "freq": 330, "decay": 17,
+      "gain": 0.8, "noise": 0.75, "bus": "sfx"
+    },
+    "spark": {
+      "kind": "noise", "seconds": 0.1, "decay": 36, "gain": 0.4, "bright": true, "bus": "sfx"
+    },
+    "detach": {
+      "kind": "clank", "seconds": 0.55, "freq": 170, "decay": 6.5,
+      "gain": 0.95, "noise": 0.55, "bus": "sfx",
+      "note": "Deliberately the longest and loudest one-shot. Losing a part is the biggest thing that happens in a match and it should be the biggest thing you hear."
+    },
+    "crowd": {
+      "kind": "noise", "seconds": 2, "loop": true, "gain": 0.5, "smooth": true, "bus": "crowd"
+    },
+    "sting": {
+      "kind": "sweep", "seconds": 0.6, "freq": 220, "freqTo": 620, "gain": 0.55, "bus": "ui"
+    },
+    "ko": {
+      "kind": "sweep", "seconds": 0.9, "freq": 540, "freqTo": 90, "gain": 0.65, "bus": "ui"
+    },
+    "click": {
+      "kind": "noise", "seconds": 0.035, "decay": 70, "gain": 0.35, "bright": true, "bus": "ui"
+    }
+  },
+
+  "$tuningNote": "T-6.18 / T-6.19. The pitch ranges are what make a motor sound like it is working rather than idling; the crowd figures are what make the room react to the fight instead of droning through it.",
+  "tuning": {
+    "motorPitchMin": 0.72,
+    "motorPitchMax": 1.45,
+    "motorSpeedForMaxPitch": 6,
+    "spinPitchMin": 0.55,
+    "spinPitchMax": 1.6,
+    "impactCooldownSeconds": 0.11,
+    "impactMinForceN": 900,
+    "crowdBaseVolume": 0.35,
+    "crowdPerHit": 0.16,
+    "crowdDecayPerSecond": 0.55,
+    "crowdNearKnockoutBoost": 0.4,
+    "nearKnockoutHealth": 0.35
+  }
+}
