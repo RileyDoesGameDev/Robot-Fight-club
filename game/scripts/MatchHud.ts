@@ -67,6 +67,7 @@ function invRotate(q, v) { return rotate([-q[0], -q[1], -q[2], q[3]], v); }
 export default function create() {
   let ui = { canvas: 0, cols: {}, callout: 0, edges: {}, pausePanel: 0, hint: 0 };
   let playerRole = "player";
+  let versus = false;
   let reportTimer = 0;
   let latest = null;
   let paused = false;
@@ -182,7 +183,8 @@ export default function create() {
       let hp = 0, max = 0;
       for (const r of rows) { hp += r.hp; max += r.maxHp; }
       const frac = max ? hp / max : 0;
-      const label = role === playerRole ? "YOU" : "OPPONENT";
+      const label = versus ? (role === "player" ? "PLAYER 1" : "PLAYER 2")
+        : role === playerRole ? "YOU" : "OPPONENT";
       call("ui.setProps", { entity: col.name, props: { text: label, color: COL_TEXT } });
       call("ui.setProps", { entity: col.cond, props: {
         text: bar(frac) + " " + Math.round(frac * 100) + "%",
@@ -222,6 +224,13 @@ export default function create() {
   return {
     onStart({ engine, call, params }) {
       playerRole = params.playerRole || "player";
+      // In versus there is no single "you", so the columns are named by seat and the
+      // directional indicator is suppressed — it can only point for one of them.
+      versus = false;
+      const sres = call("project.readFile", { path: "/data/session.json" });
+      if (sres && !sres.isError && sres.content) {
+        try { versus = JSON.parse(sres.content.text).players === 2; } catch (err) { versus = false; }
+      }
       paused = false;
       latest = null;
       flash.clear();
@@ -236,7 +245,7 @@ export default function create() {
         if (p.victim) flash.set(p.victim, FLASH_SECONDS);
         // Only the player's own damage gets a direction — an indicator for a hit the
         // player did not take is noise.
-        if (p.role !== playerRole) markDirection(call, p.victim, p.point);
+        if (!versus && p.role !== playerRole) markDirection(call, p.victim, p.point);
       }));
 
       offs.push(engine.mcp.on("battlebots.partDetached", (p) => {

@@ -28,6 +28,8 @@
 
 const BUNDLE_PATH = "/data/bundle.json";
 const SELECTION_PATH = "/data/bots/__selected.json";
+/** Arena01's stock challenger, preserved from when its spawner named it directly. */
+const DEFAULT_ARENA_FOE = "opp-wedge";
 const TURNTABLE_TOP_Y = 0.12;
 const ROSTER_ROWS = 8;
 const CARD_ROWS = 7;
@@ -151,8 +153,9 @@ export default function create() {
     bar.children.push(button([0.015, 0.15], [0.17, 0.85], "< Prev", "cmd:prev"));
     bar.children.push(button([0.185, 0.15], [0.34, 0.85], "Next >", "cmd:next"));
     bar.children.push(button([0.36, 0.15], [0.5, 0.85], "Menu", "cmd:menu"));
-    bar.children.push(button([0.52, 0.15], [0.74, 0.85], "PRACTICE", "cmd:practice"));
-    bar.children.push(button([0.76, 0.15], [0.985, 0.85], "FIGHT", "cmd:fight"));
+    bar.children.push(button([0.52, 0.15], [0.68, 0.85], "PRACTICE", "cmd:practice"));
+    bar.children.push(button([0.7, 0.15], [0.84, 0.85], "FIGHT", "cmd:fight"));
+    bar.children.push(button([0.86, 0.15], [0.985, 0.85], "VERSUS", "cmd:versus"));
 
     const head = panel([0.3, 0.02], [0.7, 0.11]);
     head.children.push(text([0.02, 0.05], [0.98, 0.55], "BOT SELECT", 16));
@@ -224,6 +227,21 @@ export default function create() {
     setHint(call, roster[index].bp.name + " — PRACTICE to spar, FIGHT for a timed match", false);
   }
 
+  /**
+   * Local multiplayer selection (T-6.8). VERSUS is a two-STAGE use of this one
+   * screen rather than a second screen: stage 1 writes player 1's bot to
+   * __selected.json, stage 2 writes player 2's to __opponent.json, and the launch
+   * happens at the end of stage 2. A separate 2P select screen would have been a
+   * near-copy of this one, and the roster, the preview and the spec card are the
+   * whole value here.
+   */
+  let versusStage = 0;   // 0 = not in versus, 1 = picking P1, 2 = picking P2
+
+  function writeSession(call, players, intent) {
+    call("project.writeFile", { path: "/data/session.json",
+      text: JSON.stringify({ intent, players }, null, 2) + "\n" });
+  }
+
   function confirm(call, engine) {
     const entry = roster[index];
     if (!entry) return;
@@ -280,11 +298,40 @@ export default function create() {
         if (id === "cmd:prev") return move(call, -1);
         if (id === "cmd:next") return move(call, 1);
         if (id === "cmd:menu") { call("project.loadScene", { name: "MainMenu" }); return; }
+        if (id === "cmd:versus") {
+          const entry = roster[index];
+          if (!entry) return;
+          if (versusStage <= 1) {
+            call("project.writeFile", { path: SELECTION_PATH, text: JSON.stringify(entry.bp, null, 2) });
+            versusStage = 2;
+            setHint(call, "P1 takes " + entry.bp.name + " — now PLAYER 2, pick yours and press VERSUS", true);
+            return;
+          }
+          // Stage 2: player 2's bot goes to the opponent seat, and the session tells
+          // BotAssembler to put a human in it instead of a brain.
+          call("project.writeFile", { path: "/data/bots/__opponent.json", text: JSON.stringify(entry.bp, null, 2) });
+          writeSession(call, 2, "versus");
+          engine.console.log("[Select] versus — P2 takes " + entry.bp.name + ", launching Arena01");
+          call("project.loadScene", { name: "Arena01" });
+          return;
+        }
         if (id === "cmd:practice" || id === "cmd:fight") {
           // Launching is confirming: persist the choice, then hand off. Arena01 and
           // DemoCenter both read /data/bots/__selected.json through their player
           // spawner, so neither scene needs to know this screen exists.
           confirm(call, engine);
+          // Any single-player launch clears a half-finished versus pick, so a
+          // stranded stage-1 selection cannot leak into the next match.
+          versusStage = 0;
+          writeSession(call, 1, id === "cmd:fight" ? "fight" : "practice");
+          // Arena01's opponent spawner reads __opponent.json (it used to name
+          // `opp-wedge` directly, which meant a versus P2 pick was ignored there).
+          // Filling it on the single-player path too keeps the arena's default
+          // challenger exactly what it has always been.
+          if (id === "cmd:fight") {
+            const foe = bundle.bots[DEFAULT_ARENA_FOE];
+            if (foe) call("project.writeFile", { path: "/data/bots/__opponent.json", text: JSON.stringify(foe, null, 2) });
+          }
           const target = id === "cmd:fight" ? "Arena01" : "DemoCenter";
           engine.console.log("[Select] launching " + target);
           call("project.loadScene", { name: target });

@@ -58,6 +58,11 @@
         },
         "Name": {
           "value": "MatchCamera"
+        },
+        "Script": {
+          "behavior": "MatchCamera",
+          "enabled": true,
+          "params": {}
         }
       }
     },

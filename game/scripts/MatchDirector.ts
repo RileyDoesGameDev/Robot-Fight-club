@@ -54,6 +54,7 @@ export default function create() {
   let matchSeconds = 120;
   let countdownSeconds = 3;
   let playerRole = "player";
+  let versus = false;
 
   function findBots(call) {
     const out = [];
@@ -131,13 +132,21 @@ export default function create() {
     ui.midPanel = m[0];
   }
 
+  /** In versus both seats are human, so "YOU" is meaningless — name the seats. */
+  function seatLabel(role) {
+    if (!versus) return role === playerRole ? "YOU" : "OPPONENT";
+    return role === "player" ? "PLAYER 1" : "PLAYER 2";
+  }
+
   function showResult(call, engine) {
     const won = result && result.winner === playerRole;
     call("ui.setProps", { entity: ui.midPanel, props: { visible: true } });
     call("ui.setProps", {
       entity: ui.sub,
       props: {
-        text: (won ? "YOU WIN" : result && result.winner ? "YOU LOSE" : "DRAW")
+        text: (versus
+            ? (result && result.winner ? seatLabel(result.winner) + " WINS" : "DRAW")
+            : won ? "YOU WIN" : result && result.winner ? "YOU LOSE" : "DRAW")
           + "  —  " + (result ? result.reason : ""),
         color: won ? COL_WIN : COL_LOSE,
       },
@@ -206,7 +215,7 @@ export default function create() {
     const record = {
       scene: sceneName, mode,
       winner: winner || null, loser: loser || null, reason,
-      playerRole, bots,
+      playerRole, bots, versus,
       damageDealt: dealt, partsLost: lost, parts,
       elapsedSeconds: Math.round(clock * 10) / 10,
     };
@@ -259,6 +268,13 @@ export default function create() {
     onStart({ engine, call, params }) {
       mode = params.mode === "practice" ? "practice" : "match";
       sceneName = params.sceneName || "Arena01";
+      // The session, not the scene, decides whether this is a versus match — Arena01
+      // serves both modes unchanged (T-6.9).
+      versus = false;
+      const sres = call("project.readFile", { path: "/data/session.json" });
+      if (sres && !sres.isError && sres.content) {
+        try { versus = JSON.parse(sres.content.text).players === 2; } catch (err) { versus = false; }
+      }
       matchSeconds = typeof params.matchSeconds === "number" ? params.matchSeconds : 120;
       countdownSeconds = typeof params.countdownSeconds === "number" ? params.countdownSeconds : 3;
       playerRole = params.playerRole || "player";

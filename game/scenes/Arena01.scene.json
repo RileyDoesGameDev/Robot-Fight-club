@@ -58,6 +58,11 @@
         },
         "Name": {
           "value": "MatchCamera"
+        },
+        "Script": {
+          "behavior": "MatchCamera",
+          "enabled": true,
+          "params": {}
         }
       }
     },
@@ -1144,7 +1149,7 @@
           ]
         },
         "Name": {
-          "value": "BotSpawn:opp-wedge:opponent"
+          "value": "BotSpawn:__opponent:opponent"
         },
         "Script": {
           "behavior": "BotAssembler",

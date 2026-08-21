@@ -10,7 +10,10 @@
  *   constraints per bot, and drive feel coupled to joint stiffness.
  *
  * WHO COMMANDS IT
- *   `params.inputDriven: true` reads the keyboard — that is the human's bot.
+ *   `params.inputDriven: true` reads the keyboard — that is a human's bot.
+ *   `params.playerIndex` (1 or 2) picks WHICH human: player 2's actions are the
+ *   same names behind a `p2.` prefix, so one code path serves both and the two key
+ *   sets cannot collide (T-6.6).
  *   Otherwise it reads `params.intent = { throttle, turn, selfRight }`, written by a
  *   decision layer such as AiDriver. Keeping actuation here means the drive tuning
  *   that was measured in week 1 lives in exactly one place; the AI supplies only
@@ -90,18 +93,25 @@ export default function create() {
     const existing = call("input.listActions", {}).content || [];
     const have = new Set((Array.isArray(existing) ? existing : existing.actions || [])
       .map((a) => (typeof a === "string" ? a : a.action)));
-    let map = null;
+    // BOTH maps, always — not just this bot's. Bindings are a global registry, and
+    // binding only the local player's set meant a versus match where whichever bot
+    // started second never got its keys (the first bot's ensureBindings had already
+    // set `bindingsReady` semantics for the shared registry).
+    let maps = [];
     try {
-      map = JSON.parse(call("project.readFile", { path: BUNDLE_PATH }).content.text).inputMap.player1;
+      const im = JSON.parse(call("project.readFile", { path: BUNDLE_PATH }).content.text).inputMap;
+      for (const k of Object.keys(im)) if (k[0] !== "$") maps.push(im[k]);
     } catch (err) {
-      map = null;
+      maps = [];
     }
-    if (!map) return;
+    if (!maps.length) return;
     let added = 0;
-    for (const action of Object.keys(map)) {
-      if (have.has(action)) continue;
-      call("input.mapAction", { action, codes: map[action] });
-      added++;
+    for (const map of maps) {
+      for (const action of Object.keys(map)) {
+        if (have.has(action)) continue;
+        call("input.mapAction", { action, codes: map[action] });
+        added++;
+      }
     }
     if (added) engine.console.log("[BotDrive] applied " + added + " input bindings");
   }
@@ -144,9 +154,11 @@ export default function create() {
       if (frozen) {
         // fall through with zeroed axes
       } else if (params.inputDriven === true) {
-        fwdAxis = (input.actionHeld("drive.forward") ? 1 : 0) - (input.actionHeld("drive.back") ? 1 : 0);
-        turnAxis = (input.actionHeld("turn.right") ? 1 : 0) - (input.actionHeld("turn.left") ? 1 : 0);
-        wantSelfRight = input.actionHeld("bot.selfRight");
+        // One code path for both humans; the prefix is the only difference (T-6.6).
+        const p = params.playerIndex === 2 ? "p2." : "";
+        fwdAxis = (input.actionHeld(p + "drive.forward") ? 1 : 0) - (input.actionHeld(p + "drive.back") ? 1 : 0);
+        turnAxis = (input.actionHeld(p + "turn.right") ? 1 : 0) - (input.actionHeld(p + "turn.left") ? 1 : 0);
+        wantSelfRight = input.actionHeld(p + "bot.selfRight");
       } else if (intent) {
         fwdAxis = clamp1(intent.throttle);
         turnAxis = clamp1(intent.turn);

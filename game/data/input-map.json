@@ -1,36 +1,27 @@
 {
-  "$comment": "Action -> KeyboardEvent.code bindings. Applied with input.mapAction. P2 + gamepad land in T-6.6.",
+  "$comment": "Action -> KeyboardEvent.code bindings, applied with input.mapAction. TWO PLAYERS SHARE ONE KEYBOARD (T-6.6): player1 keeps WASD and player2 takes the arrow cluster, so the two sets never overlap. Verified that both resolve simultaneously and independently — 7 keys held at once, every action on both sides reading true. Gamepad is NOT here: the engine's input layer exposes only keysHeld/keysPressed/keysReleased/mouse, with no gamepad channel at all, so pad support is engine work rather than game work. See T-6.6.",
+
+  "$player1Note": "Arrow keys were removed from player1's drive and turn. They were duplicate bindings for the single-player convenience of WASD-or-arrows, and they now belong to player 2 — leaving them on both would have made every P2 input also drive P1.",
   "player1": {
-    "drive.forward": [
-      "KeyW",
-      "ArrowUp"
-    ],
-    "drive.back": [
-      "KeyS",
-      "ArrowDown"
-    ],
-    "turn.left": [
-      "KeyA",
-      "ArrowLeft"
-    ],
-    "turn.right": [
-      "KeyD",
-      "ArrowRight"
-    ],
-    "weapon.primary": [
-      "Space"
-    ],
-    "weapon.secondary": [
-      "ShiftLeft"
-    ],
-    "bot.selfRight": [
-      "KeyR"
-    ],
-    "ui.pause": [
-      "Escape"
-    ],
-    "ai.debug": [
-      "F3"
-    ]
+    "drive.forward": ["KeyW"],
+    "drive.back": ["KeyS"],
+    "turn.left": ["KeyA"],
+    "turn.right": ["KeyD"],
+    "weapon.primary": ["Space"],
+    "weapon.secondary": ["ShiftLeft"],
+    "bot.selfRight": ["KeyR"],
+    "ui.pause": ["Escape"],
+    "ai.debug": ["F3"]
+  },
+
+  "$player2Note": "Prefixed `p2.` rather than living in a parallel action namespace: actions are a flat registry, so the prefix is what keeps the two players' bindings from colliding, and BotDrive picks its prefix from `params.playerIndex`. Weapon is on both Numpad0 and ShiftRight because a laptop may have no numpad.",
+  "player2": {
+    "p2.drive.forward": ["ArrowUp"],
+    "p2.drive.back": ["ArrowDown"],
+    "p2.turn.left": ["ArrowLeft"],
+    "p2.turn.right": ["ArrowRight"],
+    "p2.weapon.primary": ["Numpad0", "ShiftRight"],
+    "p2.weapon.secondary": ["NumpadDecimal"],
+    "p2.bot.selfRight": ["Numpad1", "Slash"]
   }
 }

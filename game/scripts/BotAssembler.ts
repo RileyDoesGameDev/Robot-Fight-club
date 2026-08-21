@@ -271,6 +271,22 @@ function assemble(engine, blueprintId, role, pose) {
   // the measured drive tuning lives in one file rather than being duplicated.
   // Display-only roles get no drivetrain and no brain. Keeping the list in one
   // place stops a new preview scene from silently acquiring an AI opponent.
+  // Local multiplayer (T-6.6, T-6.9). The session decides whether the opponent seat
+  // is a second human or the AI; the SCENE does not know, which is what lets Arena01
+  // serve both modes unchanged.
+  // Read through this function's own `readFile` handle, NOT `ctx.call` — there is no
+  // `call` in this scope. assemble() predates it and reaches tools through
+  // engine.mcp.toolMap, which is exactly the workaround T-2.24 is about; using
+  // `call` here threw a ReferenceError that the catch below swallowed, so versus
+  // silently never engaged and the opponent stayed an AI.
+  let twoPlayer = false;
+  try {
+    twoPlayer = JSON.parse(readFile({ path: "/data/session.json" }).content.text).players === 2;
+  } catch (err) {
+    twoPlayer = false;   // no session file yet — single player
+  }
+  const humanSeat = role === "player" || (twoPlayer && role === "opponent");
+
   const inert = role === "workshop" || role === "select";
   if (!inert) {
     // T-4.10 — the fitted motor IS the drivetrain tuning. Resolved here, at assembly,
@@ -287,7 +303,8 @@ function assemble(engine, blueprintId, role, pose) {
       behavior: "BotDrive",
       enabled: true,
       params: {
-        inputDriven: role === "player",
+        inputDriven: humanSeat,
+        playerIndex: role === "player" ? 1 : 2,
         driveForceMultiplier: mstats.driveForceMultiplier != null ? mstats.driveForceMultiplier : 1,
         turnTorqueMultiplier: mstats.turnTorqueMultiplier != null ? mstats.turnTorqueMultiplier : 1,
         maxSpeedMultiplier: mstats.maxSpeedMultiplier != null ? mstats.maxSpeedMultiplier : 1,
@@ -297,7 +314,8 @@ function assemble(engine, blueprintId, role, pose) {
 
   // Anyone who is not the player gets a brain. It is a CHILD entity because an
   // entity can hold only one Script and the chassis already carries BotDrive.
-  if (!inert && role !== "player") {
+  // A seat with a human in it gets no brain — in versus BOTH seats are human.
+  if (!inert && !humanSeat) {
     const brain = createEntity({
       components: {
         Name: { value: "Bot_" + role + "_Brain" },
