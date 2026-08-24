@@ -19,16 +19,25 @@
  *   which resolves blueprints from the bundle *or* from /data/bots/<id>.json.
  *   One assembler, one definition of what a bot is.
  *
- * WHY THE REBUILD IS A 3-FRAME STATE MACHINE (engine bug workaround)
- *   `ScriptSystem.frameUpdate` does `world.getComponent(entity, Script)!` with a
- *   non-null assertion while iterating `world.query(["Script"])`. Deleting a
- *   Script-bearing entity from inside a script hook therefore crashes the whole
- *   frame loop with "Cannot read properties of undefined (reading 'enabled')".
- *   So the spawner marker is created ONCE and never deleted; to re-run its
- *   BotAssembler we disable its Script on one frame and re-enable it on the next,
- *   which makes ScriptSystem tear the instance down and build a fresh one
- *   (onStart runs again). Only the assembled bodies — which carry no Script — are
- *   ever deleted. See docs/engine-bugs.md BUG-011.
+ * WHY THE REBUILD IS STILL A 2-FRAME CYCLE (T-2.25)
+ *   The spawner marker is created ONCE and never deleted. To re-run its BotAssembler
+ *   its Script is disabled on one frame and re-enabled on the next, which makes the
+ *   script host tear the instance down and build a fresh one, running `onStart` again.
+ *
+ *   This began as a workaround for BUG-011 — the script loop dereferenced a Script
+ *   component without a null guard, so deleting a Script-bearing entity from inside a
+ *   hook took the whole frame loop down. That is fixed in the editor, and T-2.25 asked
+ *   for this machine to be deleted in favour of a straight delete-and-recreate.
+ *
+ *   It is not deleted, and the reason is worth writing down: **the deployed runtime
+ *   still has the unguarded read** (engine-fixes.md LIM-009 — the player is an older
+ *   engine than the editor). `tools/shim-build.js` backports the guard so the shipped
+ *   build survives it, but a rebuild that depends on a shim patch to not freeze the
+ *   game is a worse design than one that never deletes the entity in the first place.
+ *
+ *   So the third frame is gone — clearing the bodies and disabling the Script now
+ *   happen together — and the marker still lives. Delete-and-recreate becomes correct
+ *   the day the runtime carries BUG-011's fix natively, and not before.
  *
  * PERSISTENCE (T-2.18 decision)
  *   Blueprints are plain JSON under `/data/bots/<slug>.json`, with the roster in
@@ -128,7 +137,7 @@ export default function create() {
 
   // ── preview rebuild machine ───────────────────────────────────────────────
   let marker = 0;
-  let pending = 0; // 0 idle, 1 clear+disable, 2 re-arm+enable
+  let pending = 0; // 0 idle, 1 re-arm + re-enable on the next frame
 
   const ui = { canvas: 0, catBtns: [], partRows: [], socketRows: [], statRows: [], title: 0, hint: 0 };
 
@@ -221,7 +230,7 @@ export default function create() {
     const s = stats();
     marker = H("scene.createEntity")({
       components: {
-        Name: { value: ARMED_NAME },
+        Name: { value: ARMED_NAME },   // still the armed/spent flag, no longer the args
         Transform: {
           position: [0, TURNTABLE_TOP_Y + s.maxWheelRadius + 0.06, 0],
           rotation: [0, 0, 0, 1],
@@ -229,32 +238,39 @@ export default function create() {
         },
       },
     }).content.entity;
-    H("script.attach")({ entity: marker, behavior: "BotAssembler", enabled: true });
+    H("script.attach")({
+      entity: marker, behavior: "BotAssembler", enabled: true,
+      // T-2.24 — arguments ride Script.params now, not the entity Name.
+      params: { blueprintId: DRAFT_ID, role: "workshop" },
+    });
   }
 
-  /** Queue a rebuild; the work happens across the next two onUpdate frames. */
+  /**
+   * Queue a rebuild. Tearing down and disabling happen NOW — they are ordinary tool
+   * calls with no ordering hazard — and only the re-enable waits a frame, because the
+   * script host has to observe the Script disabled before it will build a fresh
+   * instance. That is one frame of latency instead of two, and one state instead of
+   * three. See the header for why the marker is not simply deleted and recreated.
+   */
   function requestRebuild() {
     writeDraftFile();
+    if (!marker) return;
+    clearPreviewBodies();
+    H("scene.setComponent")({ entity: marker, component: "Script", patch: { enabled: false } });
+    // Keep the spawn height correct for the current wheel size.
+    const s = stats();
+    H("scene.setComponent")({
+      entity: marker,
+      component: "Transform",
+      patch: { position: [0, TURNTABLE_TOP_Y + s.maxWheelRadius + 0.06, 0], rotation: [0, 0, 0, 1] },
+    });
     pending = 1;
   }
 
   function pumpRebuild() {
     if (!pending || !marker) return;
-    if (pending === 1) {
-      clearPreviewBodies();
-      H("scene.setComponent")({ entity: marker, component: "Script", patch: { enabled: false } });
-      // Keep the spawn height correct for the current wheel size.
-      const s = stats();
-      H("scene.setComponent")({
-        entity: marker,
-        component: "Transform",
-        patch: { position: [0, TURNTABLE_TOP_Y + s.maxWheelRadius + 0.06, 0], rotation: [0, 0, 0, 1] },
-      });
-      pending = 2;
-      return;
-    }
-    // pending === 2 — re-arm the name so BotAssembler's idempotency guard passes,
-    // then re-enable so ScriptSystem builds a fresh instance and runs onStart.
+    // Re-arm the name so BotAssembler's idempotency guard passes, then re-enable so
+    // the script host builds a fresh instance and runs onStart.
     H("scene.setComponent")({ entity: marker, component: "Name", patch: { value: ARMED_NAME } });
     H("scene.setComponent")({ entity: marker, component: "Script", patch: { enabled: true } });
     pending = 0;
@@ -659,10 +675,15 @@ export default function create() {
   }
 
   return {
-    onStart({ engine }) {
+    onStart({ engine, call }) {
       engineRef = engine;
-      const tm = engine.mcp.toolMap;
-      H = (n) => tm.get(n).handler;
+      // T-2.24 — `H` is now a thin adapter over `ctx.call`, keeping the
+      // `H("tool")({ args })` shape this file uses throughout while routing every
+      // call through zod. Reaching into `engine.mcp.toolMap` for raw handlers skipped
+      // the schema, and with it the DEFAULTS the schema promises — the cause of the
+      // hidden-canvas bug, where an omitted field stayed undefined instead of
+      // defaulting to visible.
+      H = (n) => (a) => call(n, a);
       bundle = JSON.parse(H("project.readFile")({ path: BUNDLE_PATH }).content.text);
 
       const seed = bundle.bots["player-slice"];

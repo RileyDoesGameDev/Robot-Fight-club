@@ -39,6 +39,52 @@ const COL_WIN = 0x4fb36a;
 const COL_LOSE = 0xd8503f;
 const COL_BTN = 0x272b36;
 
+/**
+ * Apply this game's input bindings. (T-2.26)
+ *
+ * `input.mapAction` is RUNTIME state — bindings are not serialized with the scene, so
+ * every scene load starts with the editor's defaults and none of this game's actions.
+ * Something has to re-apply them, and it used to be `BotDrive.onStart`, which made a
+ * bot responsible for a global registry: in a versus match whichever bot started
+ * second found the flag already set and never bound its own keys.
+ *
+ * The scene director is the right owner. It exists once per gameplay scene, it starts
+ * before anything is driveable, and it already owns the rest of scene setup (T-6.2).
+ *
+ * Bound per action rather than all-or-nothing, which is the bug that shipped the first
+ * time: gating the whole map on one action already existing meant any action added
+ * later never bound in a session that had applied the old set — exactly how the F3 AI
+ * overlay silently went missing after it was added.
+ */
+function applyInputMap(call, engine) {
+  const existing = call("input.listActions", {});
+  const list = existing && !existing.isError && existing.content ? existing.content : [];
+  const have = new Set((Array.isArray(list) ? list : list.actions || [])
+    .map((a) => (typeof a === "string" ? a : a.action)));
+
+  let maps = [];
+  const res = call("project.readFile", { path: "/data/bundle.json" });
+  if (!res || res.isError || !res.content) return;
+  try {
+    const im = JSON.parse(res.content.text).inputMap;
+    // EVERY map, not just this scene's player. Bindings are one global registry and
+    // player 2's keys have to exist before player 2's bot does.
+    for (const k of Object.keys(im)) if (k[0] !== "$") maps.push(im[k]);
+  } catch (err) {
+    return;
+  }
+
+  let added = 0;
+  for (const map of maps) {
+    for (const action of Object.keys(map)) {
+      if (have.has(action)) continue;
+      call("input.mapAction", { action, codes: map[action] });
+      added++;
+    }
+  }
+  if (added) engine.console.log("[Match] applied " + added + " input bindings");
+}
+
 export default function create() {
   let state = "countdown";
   let clock = 0;              // counts down in countdown, up while fighting
@@ -266,6 +312,9 @@ export default function create() {
 
   return {
     onStart({ engine, call, params }) {
+      // Before anything else: a driveable scene with no bindings is a dead controller.
+      applyInputMap(call, engine);
+
       mode = params.mode === "practice" ? "practice" : "match";
       sceneName = params.sceneName || "Arena01";
       // The session, not the scene, decides whether this is a versus match — Arena01

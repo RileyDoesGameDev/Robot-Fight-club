@@ -2,15 +2,21 @@
  * BotAssembler — turns a BotBlueprint into a live, breakable bot. (T-2.9)
  *
  * HOW IT IS DRIVEN
- *   Attach this behavior to an empty "spawner" marker entity whose Transform is
- *   the spawn pose and whose Name encodes the parameters:
+ *   Attach this behavior to an empty "spawner" marker entity whose Transform is the
+ *   spawn pose and whose `Script.params` carry the arguments (T-2.24):
  *
- *       BotSpawn:<blueprintId>:<role>          e.g. BotSpawn:player-slice:player
+ *       params: { blueprintId: "player-slice", role: "player" }
  *
- *   `Name` is the parameter channel because `script.attach` takes no per-instance
- *   arguments and the ECS has no generic key/value component. On success the
- *   marker renames itself to `BotSpawned:...`, which makes assembly idempotent:
- *   re-loading a scene that already contains a baked bot will not duplicate it.
+ *   The arguments used to be encoded into the entity Name (`BotSpawn:<id>:<role>`)
+ *   because `script.attach` had no per-instance arguments and the ECS has no generic
+ *   key/value component. `Script.params` exists now (LIM-001), so the name is no
+ *   longer a smuggling route. Name-encoded markers are still ACCEPTED — scenes
+ *   authored before this change still load — but nothing writes them any more.
+ *
+ *   The Name still carries one bit of STATE: on success the marker renames itself to
+ *   `BotSpawned:...`, which is what makes assembly idempotent so that re-loading a
+ *   scene that already contains a baked bot does not duplicate it. State in the name
+ *   is fine; arguments in the name were not.
  *
  * WHY NOT PREFABS (deviation from T-2.5 - T-2.8 as written)
  *   T-2.4 made the PartDef JSON the single source of truth for sockets. Authoring
@@ -76,14 +82,16 @@ function colliderFor(spec, contactThreshold) {
  * Build the bot. Returns a report describing what was created — the Workshop
  * stat panel (T-2.17) and the determinism gate (T-2.11) both read it.
  */
-function assemble(engine, blueprintId, role, pose) {
-  const tm = engine.mcp.toolMap;
-  const H = (n) => tm.get(n).handler;
-  const readFile = H("project.readFile");
-  const createEntity = H("scene.createEntity");
-  const addComponent = H("scene.addComponent");
-  const reparent = H("scene.reparent");
-  const attach = H("script.attach");
+function assemble(call, engine, blueprintId, role, pose) {
+  // T-2.24 — everything goes through `ctx.call`. This used to reach into
+  // `engine.mcp.toolMap` for raw handlers, which skips zod and therefore skips the
+  // schema DEFAULTS: that is what produced the hidden-canvas bug, where an omitted
+  // field silently stayed undefined instead of taking the default the schema promised.
+  const readFile = (a) => call("project.readFile", a);
+  const createEntity = (a) => call("scene.createEntity", a);
+  const addComponent = (a) => call("scene.addComponent", a);
+  const reparent = (a) => call("scene.reparent", a);
+  const attach = (a) => call("script.attach", a);
 
   const bundle = JSON.parse(readFile({ path: BUNDLE_PATH }).content.text);
   const parts = bundle.parts;
@@ -269,21 +277,7 @@ function assemble(engine, blueprintId, role, pose) {
     totalMass += def.mass;
   }
 
-  // ── controller ────────────────────────────────────────────────────────────
-  // The opponent gets AiDriver once it exists (T-3.13); until then it is inert.
-  // BotDrive is the actuation layer for EVERY driven bot. The player's reads the
-  // keyboard; an AI bot's reads `intent` written by an AiDriver brain (T-3.13), so
-  // the measured drive tuning lives in one file rather than being duplicated.
-  // Display-only roles get no drivetrain and no brain. Keeping the list in one
-  // place stops a new preview scene from silently acquiring an AI opponent.
-  // Local multiplayer (T-6.6, T-6.9). The session decides whether the opponent seat
-  // is a second human or the AI; the SCENE does not know, which is what lets Arena01
-  // serve both modes unchanged.
-  // Read through this function's own `readFile` handle, NOT `ctx.call` — there is no
-  // `call` in this scope. assemble() predates it and reaches tools through
-  // engine.mcp.toolMap, which is exactly the workaround T-2.24 is about; using
-  // `call` here threw a ReferenceError that the catch below swallowed, so versus
-  // silently never engaged and the opponent stayed an AI.
+  // Versus is a SESSION fact, not a scene fact (T-6.9).
   let twoPlayer = false;
   let difficulty = "normal";
   try {
@@ -349,7 +343,6 @@ function assemble(engine, blueprintId, role, pose) {
     role,
     name: blueprint.name,
     chassis,
-    visual,
     parts: created,
     totalMassKg: totalMass,
     weightClass: cls ? cls.id : "over-cap",
@@ -359,17 +352,28 @@ function assemble(engine, blueprintId, role, pose) {
 
 export default function create() {
   return {
-    onStart({ entity, engine, world }) {
-      const tm = engine.mcp.toolMap;
-      const getComp = tm.get("scene.getComponent").handler;
-      const setComp = tm.get("scene.setComponent").handler;
+    onStart({ entity, engine, call, params }) {
+      const getComp = (a) => call("scene.getComponent", a);
+      const setComp = (a) => call("scene.setComponent", a);
 
       const nameComp = getComp({ entity, component: "Name" }).content;
       const raw = nameComp && nameComp.value ? nameComp.value : "";
-      if (!raw.startsWith("BotSpawn:")) return; // already spawned, or not a marker
+      // The Name is the SPENT flag, whichever way the arguments arrived.
+      if (raw.startsWith("BotSpawned:")) return;
 
-      const [, blueprintId, roleRaw] = raw.split(":");
-      const role = roleRaw || "player";
+      // T-2.24 — arguments come from Script.params. A Name-encoded marker is still
+      // honoured so scenes authored before this change keep working; that fallback is
+      // the only thing keeping `BotSpawn:` meaningful and can go once no scene uses it.
+      let blueprintId = params && params.blueprintId;
+      let role = params && params.role;
+      if (!blueprintId) {
+        if (!raw.startsWith("BotSpawn:")) return;   // not a marker at all
+        const parts = raw.split(":");
+        blueprintId = parts[1];
+        role = role || parts[2];
+      }
+      if (!blueprintId) return;
+      role = role || "player";
 
       const t = getComp({ entity, component: "Transform" }).content;
       const pose = {
@@ -378,7 +382,7 @@ export default function create() {
       };
 
       try {
-        const report = assemble(engine, blueprintId, role, pose);
+        const report = assemble(call, engine, blueprintId, role, pose);
         // Mark spent BEFORE anything else can re-enter, so a double onStart
         // (hot reload restarts instances) cannot build the bot twice.
         setComp({ entity, component: "Name", patch: { value: "BotSpawned:" + blueprintId + ":" + role } });
@@ -388,7 +392,7 @@ export default function create() {
             report.parts.length + " parts, chassis=" + report.chassis,
         );
       } catch (err) {
-        engine.console.error("[BotAssembler] " + raw + " failed: " + err.message);
+        engine.console.error("[BotAssembler] " + (blueprintId || raw) + " failed: " + err.message);
       }
     },
   };

@@ -128,7 +128,7 @@ export default function create() {
       if (/^Bot_select_/.test(x.n)) call("scene.deleteEntity", { entity: x.e });
     }
     for (const x of named(call)) {
-      if (/^BotSpawn(ed)?:.*:select$/.test(x.n)) call("scene.deleteEntity", { entity: x.e });
+      if (/^BotPreview:/.test(x.n) || /^BotSpawn(ed)?:.*:select$/.test(x.n)) call("scene.deleteEntity", { entity: x.e });
     }
     marker = 0;
   }
@@ -139,11 +139,15 @@ export default function create() {
     clearPreview(call);
     marker = call("scene.createEntity", {
       components: {
-        Name: { value: "BotSpawn:" + entry.id + ":select" },
+        // T-2.24 — the name is a label now, not a parameter channel.
+        Name: { value: "BotPreview:" + entry.id },
         Transform: { position: [0, spawnHeight(entry.bp), 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] },
       },
     }).content.entity;
-    call("script.attach", { entity: marker, behavior: "BotAssembler", enabled: true, params: {} });
+    call("script.attach", {
+      entity: marker, behavior: "BotAssembler", enabled: true,
+      params: { blueprintId: entry.id, role: "select" },
+    });
   }
 
   function weaponOf(bp) {

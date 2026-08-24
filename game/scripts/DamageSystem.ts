@@ -59,6 +59,28 @@
 const BUNDLE_PATH = "/data/bundle.json";
 
 // Greybox damage tint. Real wear overlays are T-4.13.
+/**
+ * Wear. (T-4.13)
+ *
+ * The task asks for a scratch overlay that intensifies with damage. With the art
+ * descoped to greybox (§4.4) there is no texture to overlay and no paint-maskable
+ * channel to drive, so wear is carried by COLOUR instead: every part darkens and
+ * desaturates continuously as its hp falls, from its own paint toward scorched metal.
+ *
+ * That is a better fit than a texture would have been, and not only because it is what
+ * is available. The two discrete steps (T-3.5) tell you a part crossed a threshold;
+ * they cannot tell you a part is at 60 %. A continuous tint reads as "this one is
+ * getting chewed up" while it is happening, which is the information a player is
+ * actually trying to get off a bot mid-fight.
+ *
+ * The stepped colours still win at their thresholds — `damaged` and `destroyed` are
+ * states with mechanical meaning (a weaker mount, a dropped joint), and they should
+ * look like states rather than like slightly more wear.
+ */
+const COL_WEAR = 0x4a4038;      // scorched, desaturated metal
+const WEAR_MAX = 0.72;          // how far toward COL_WEAR a part at 0 hp can go
+const WEAR_STEPS = 6;           // quantisation, so grinding contact does not spam setComponent
+
 const COL_DAMAGED = 0x8a6a1f;
 const COL_DESTROYED = 0x3a2a2a;
 
@@ -363,6 +385,40 @@ export default function create() {
     if (r && !r.isError && r.content) call("scene.setComponent", { entity, component: "MeshRenderer", patch: { color } });
   }
 
+  /** Blend two packed 0xRRGGBB colours, per channel. */
+  function mixColor(a, b, t) {
+    const k = t < 0 ? 0 : t > 1 ? 1 : t;
+    const ar = (a >> 16) & 255, ag = (a >> 8) & 255, ab = a & 255;
+    const br = (b >> 16) & 255, bg = (b >> 8) & 255, bb = b & 255;
+    return (Math.round(ar + (br - ar) * k) << 16)
+         | (Math.round(ag + (bg - ag) * k) << 8)
+         | Math.round(ab + (bb - ab) * k);
+  }
+
+  /**
+   * T-4.13 — repaint a part for its current hp.
+   *
+   * Only runs while a part is `intact`: once it is `damaged` or `destroyed` the state
+   * colour owns the part, because those states mean something mechanical and should
+   * not be washed out by a gradient. Quantised to `wearSteps` so a part that is being
+   * ground down does not issue a `setComponent` on every contact — the visible result
+   * is identical and the call count is bounded.
+   */
+  function applyWear(call, entity, rec) {
+    if (rec.state !== "intact" || !rec.maxHp) return;
+    if (rec.baseColor == null) {
+      const r = call("scene.getComponent", { entity, component: "MeshRenderer" });
+      if (!r || r.isError || !r.content) return;
+      rec.baseColor = r.content.color;
+      rec.wearStep = 0;
+    }
+    const lost = 1 - Math.max(0, Math.min(1, rec.hp / rec.maxHp));
+    const step = Math.round(lost * WEAR_STEPS);
+    if (step === rec.wearStep) return;
+    rec.wearStep = step;
+    setColor(call, entity, mixColor(rec.baseColor, COL_WEAR, (step / WEAR_STEPS) * WEAR_MAX));
+  }
+
   /** intact -> damaged -> destroyed, with the mechanical consequences (T-3.5, T-3.6, T-5.5). */
   function applyState(call, engine, entity, rec, next, reason) {
     if (rec.state === next) return;
@@ -589,6 +645,7 @@ export default function create() {
           if (amount <= 0) return;
 
           victim.hp = Math.max(0, victim.hp - amount);
+          applyWear(call, victimEntity, victim);   // T-4.13
           const attacker = bots.get(striker.role);
           if (attacker) attacker.damageDealt += amount;
 

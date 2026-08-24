@@ -1122,7 +1122,10 @@
         "Script": {
           "behavior": "BotAssembler",
           "enabled": true,
-          "params": {}
+          "params": {
+            "blueprintId": "__selected",
+            "role": "player"
+          }
         }
       }
     },
@@ -1154,7 +1157,10 @@
         "Script": {
           "behavior": "BotAssembler",
           "enabled": true,
-          "params": {}
+          "params": {
+            "blueprintId": "__opponent",
+            "role": "opponent"
+          }
         }
       }
     },

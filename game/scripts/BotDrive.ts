@@ -10,7 +10,10 @@
  *   constraints per bot, and drive feel coupled to joint stiffness.
  *
  * WHO COMMANDS IT
- *   `params.inputDriven: true` reads the keyboard — that is a human's bot.
+ *   `params.inputDriven: true` reads the keyboard — that is a human's bot. The
+ *   BINDINGS themselves are applied by MatchDirector, not here (T-2.26): they are
+ *   a global registry that must exist before any bot does, and a bot is the wrong
+ *   owner for it.
  *   `params.playerIndex` (1 or 2) picks WHICH human: player 2's actions are the
  *   same names behind a `p2.` prefix, so one code path serves both and the two key
  *   sets cannot collide (T-6.6).
@@ -75,52 +78,8 @@ function rotate(q, v) {
 
 export default function create() {
   let selfRightTimer = 0;
-  let bindingsReady = false;
-
-  /**
-   * Input action bindings are RUNTIME state — `input.mapAction` is not serialized
-   * with the scene, so a scene load leaves the editor's defaults and none of this
-   * game's actions. Applying them here keeps a bot self-sufficient. A proper
-   * bootstrap belongs with the scene-flow work (T-6.2); until then this is its home.
-   */
-  function ensureBindings(call, engine) {
-    if (bindingsReady) return;
-    bindingsReady = true;
-    // Bind per action, not all-or-nothing. Gating the whole map on one action being
-    // present meant any action added later never bound at all in a session that had
-    // already applied the old set — which is exactly how ai.debug (F3) silently went
-    // missing after it was added to the map.
-    const existing = call("input.listActions", {}).content || [];
-    const have = new Set((Array.isArray(existing) ? existing : existing.actions || [])
-      .map((a) => (typeof a === "string" ? a : a.action)));
-    // BOTH maps, always — not just this bot's. Bindings are a global registry, and
-    // binding only the local player's set meant a versus match where whichever bot
-    // started second never got its keys (the first bot's ensureBindings had already
-    // set `bindingsReady` semantics for the shared registry).
-    let maps = [];
-    try {
-      const im = JSON.parse(call("project.readFile", { path: BUNDLE_PATH }).content.text).inputMap;
-      for (const k of Object.keys(im)) if (k[0] !== "$") maps.push(im[k]);
-    } catch (err) {
-      maps = [];
-    }
-    if (!maps.length) return;
-    let added = 0;
-    for (const map of maps) {
-      for (const action of Object.keys(map)) {
-        if (have.has(action)) continue;
-        call("input.mapAction", { action, codes: map[action] });
-        added++;
-      }
-    }
-    if (added) engine.console.log("[BotDrive] applied " + added + " input bindings");
-  }
 
   return {
-    onStart({ engine, call }) {
-      ensureBindings(call, engine);
-    },
-
     onFixedUpdate({ entity, engine, call, dt, params }) {
       const res = call("physics.bodyState", { entity });
       // Before the first play-mode enable the physics provider answers with an

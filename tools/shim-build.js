@@ -215,6 +215,28 @@ if (player.indexOf("__SMPL_SHIMMED__") >= 0) {
     "script ctx (start/update/fixedUpdate/destroy) -> + call/params",
   );
 
+  // BUG-011 backport, and the most important patch in this file.
+  //
+  // The runtime's script loop reads a Script component off every queried entity and
+  // dereferences it without a guard. Delete a Script-bearing entity from inside a hook
+  // and the next iteration reads `undefined.enabled` and takes the whole frame loop
+  // down — the game freezes, with one uncaught error.
+  //
+  // This is not hypothetical here. `DamageSystem` culls debris from `onFixedUpdate`,
+  // and a sheared-off weapon IS debris that carries `WeaponController`. So any match
+  // that runs long enough for a weapon to come off and then expire — or for one to be
+  // knocked into a pit — freezes the deployed build. `engine-fixes.md` records BUG-011
+  // as fixed, and it is: in the editor. The runtime never got it, like `ctx.call` and
+  // `Script.params` before it.
+  //
+  // The editor's fix is a guarded read. This is the same guard.
+  player = replaceOnce(
+    player,
+    'for (const g of A.query(["Script"])) {\n      const I = A.getComponent(g, ch);\n      if (!I.enabled || I.behavior === "")\n        continue;',
+    'for (const g of A.query(["Script"])) {\n      const I = A.getComponent(g, ch);\n      /* __SMPL_SHIMMED__ BUG-011: an entity deleted from inside a hook is still in\n         this query, and reading .enabled off nothing kills the frame loop. */\n      if (!I || !I.enabled || I.behavior === "")\n        continue;',
+    "script loop -> guard against entities deleted mid-hook (BUG-011)",
+  );
+
   // LIM-001 backport, second half. `BotAssembler` does not go through `ctx.call` at
   // all — it pulls raw handlers straight out of `engine.mcp.toolMap`, which is the
   // documented way to skip zod (BUG-004). So the backport inside __smplCall never
@@ -297,6 +319,7 @@ const checks = [
   ["script ctx provides call", (finalPlayer.split("call: __smplCall(this.engine)").length - 1) === 6],
   ["script ctx provides params", (finalPlayer.split("params: __smplParams(this.engine").length - 1) === 6],
   ["script.attach carries params", finalPlayer.indexOf("params: s.params") >= 0],
+  ["script loop guards deleted entities", finalPlayer.indexOf("BUG-011: an entity deleted from inside a hook") >= 0],
   ["prelude defines the helpers", finalPlayer.indexOf("function __smplCall(engine)") >= 0 && finalPlayer.indexOf("function __smplParams(engine") >= 0],
 ];
 let bad = 0;
