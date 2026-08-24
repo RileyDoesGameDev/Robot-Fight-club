@@ -41,6 +41,43 @@ const COL_TEXT = 0xe8e8ee;
 const COL_DIM = 0x9aa0ad;
 const COL_OK = 0x4fb36a;
 
+/**
+ * Type scale. (T-6.15)
+ *
+ * The UI lays out in ANCHOR space — every panel and button is a fraction of the
+ * screen — but font sizes were written as absolute pixels. Those two do not agree:
+ * on a 2560-wide deployment the panels grow to match the screen and the text stays
+ * 14px, so the menu renders as tiny writing marooned in oversized boxes. It reads as
+ * "squished", and it is invisible while authoring, because the editor's game view
+ * happens to be about the size the numbers were picked against.
+ *
+ * So sizes below are DESIGN pixels against a 720p reference, and `uiPx` converts
+ * them to real ones. The reference height is measured off the largest canvas in the
+ * document rather than the window: in a deployed build that is the full-screen
+ * viewport, and in the editor it is the game view panel, which is the number that
+ * actually matters in each case. The clamp stops a very tall or very short window
+ * turning the whole interface into either billboards or ants.
+ *
+ * Duplicated in every UI script on purpose — scripts cannot import each other
+ * (engine-fixes.md LIM-002), and the alternative is routing type through a spawner
+ * marker, which is the indirection `Script.params` exists to remove.
+ */
+const UI_DESIGN_HEIGHT = 720;
+
+function uiPx(size) {
+  let h = 0;
+  try {
+    const canvases = (typeof document !== "undefined" && document.querySelectorAll)
+      ? document.querySelectorAll("canvas") : [];
+    for (const c of canvases) h = Math.max(h, c.clientHeight || 0);
+    if (!h) h = (typeof globalThis !== "undefined" && globalThis.innerHeight) || UI_DESIGN_HEIGHT;
+  } catch (err) {
+    h = UI_DESIGN_HEIGHT;
+  }
+  const k = Math.max(0.75, Math.min(2.5, h / UI_DESIGN_HEIGHT));
+  return Math.round(size * k);
+}
+
 export default function create() {
   let bundle = null;
   let roster = [];          // [{ id, bp }] sorted by mass
@@ -126,12 +163,12 @@ export default function create() {
       children: [],
     });
     const text = (min, max, t, size, color) => ({
-      props: { kind: "text", visible: true, text: t, color: color || COL_TEXT, fontSize: size || 13,
+      props: { kind: "text", visible: true, text: t, color: color || COL_TEXT, fontSize: uiPx(size || 13),
         layout: { anchorMin: min, anchorMax: max, offsetMin: [0, 0], offsetMax: [0, 0] } },
     });
     const button = (min, max, t, actionId) => ({
       props: { kind: "button", visible: true, text: t, actionId, color: COL_TEXT,
-        backgroundColor: COL_BTN, fontSize: 12,
+        backgroundColor: COL_BTN, fontSize: uiPx(12),
         layout: { anchorMin: min, anchorMax: max, offsetMin: [0, 0], offsetMax: [0, 0] } },
     });
 
@@ -210,7 +247,7 @@ export default function create() {
     for (let i = 0; i < CARD_ROWS; i++) {
       call("ui.setProps", {
         entity: ui.card[i],
-        props: { text: rows[i] || "", color: i === 0 ? COL_TEXT : COL_DIM, fontSize: i === 0 ? 15 : 12 },
+        props: { text: rows[i] || "", color: i === 0 ? COL_TEXT : COL_DIM, fontSize: uiPx(i === 0 ? 15 : 12) },
       });
     }
   }

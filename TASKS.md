@@ -497,7 +497,13 @@ Derived from `Battle_Bots_Project_Proposal (1).docx`. Every task is written to b
   - **Partial, and honestly so:** volume has nothing to attach to until the audio bus exists (T-6.16 – T-6.20), and **rebindable controls are not done** — bindings live in `data/input-map.json` and are applied at runtime, so rebinding needs a persistence path and a capture UI. Both are listed against T-6.20 and T-8.1 respectively rather than being quietly claimed here.
 - [x] **T-6.14** Controls/tutorial panel in the Demo Center.
   - The controls half already existed. It is now a real primer: controls, then the four things that decide a match and are **not** discoverable by pressing buttons — the pits are lethal, the red floor discs can tear a wheel off, losing three wheels or the motor stops you, and a blade at rest only shoves. Kept to one screen; a panel nobody finishes reading teaches nothing.
-- [ ] **T-6.15** UI consistency pass — one type scale, one color language, readable at the deployed resolution.
+- [~] **T-6.15** UI consistency pass — one type scale, one color language, readable at the deployed resolution.
+  - **"Readable at the deployed resolution" is done; the wider consistency pass is not.**
+  - The bug this task existed to catch, found the moment the build was played on a real screen: the UI lays out in **anchor space** (every panel a fraction of the screen) but font sizes were written as **absolute pixels**. On a 2560-wide deployment the panels grow with the display and the text stays 14px, so the menu renders as tiny writing marooned in oversized boxes — buttons 602 x 104 px with 14px labels, a text-to-button ratio of 0.135.
+  - **Invisible while authoring**, which is why it survived to week 8: the editor's game view happens to be about the size the numbers were originally picked against, so it looks right there and only breaks in the thing you ship.
+  - Fixed by making the sizes DESIGN pixels against a 720p reference and converting through a `uiPx` helper, which measures the largest canvas in the document — the full-screen viewport in a build, the game-view panel in the editor, which is the correct reference in each case. Clamped to 0.75–2.5 so an extreme window cannot turn the interface into either billboards or ants.
+  - **Measured:** at a 1215px viewport the scale is 1.69 and 14px becomes 24px; ratio 0.135 -> **0.23**. Applied at all 13 font sites across the six UI scripts, each of which funnels every size through its own `text()`/`button()` helper. The helper is duplicated per script because scripts cannot import each other (LIM-002).
+  - **Still open:** one type scale and one colour language across the six screens. Sizes are currently 11/12/13/14/15 chosen per-script rather than from a shared ramp, and a couple of HUD labels now clip (`armor_fron`). Worth doing with the playtest feedback (T-7.1) rather than guessing.
 
 ### 6.4 Audio
 

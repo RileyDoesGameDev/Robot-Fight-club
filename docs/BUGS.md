@@ -56,6 +56,19 @@ the scene at export time. Nothing behind them is alive.
 Shimmed by `tools/shim-build.js`; the container on `:4300` is a real, playable build. Reopen if
 the engine is rebuilt and the shim stops matching.
 
+### BB-009 — UI text did not scale with the display · **fixed**
+
+Reported from the first real play of the build: "everything is squished". The UI lays out in
+anchor space but font sizes were absolute pixels, so on a 2560-wide screen the panels scaled
+and the text did not — 602 x 104 px buttons with 14px labels.
+
+It could only ever show up in a deployment. The editor's game view is close enough to the size
+the numbers were chosen against that it looks correct there, which is how it reached week 8.
+
+Fixed under T-6.15: sizes are now design pixels against a 720p reference, converted through a
+`uiPx` helper that measures the actual canvas. A couple of HUD labels clip at the larger size
+(`armor_fron`) — cosmetic, folded into the remaining half of T-6.15.
+
 ### BB-002 — `scene.query` reorders components on export
 
 Re-exporting an untouched scene produces a diff: `Name` moves relative to `MeshRenderer` on
