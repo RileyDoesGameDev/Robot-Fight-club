@@ -105,6 +105,33 @@ the editor's MCP tab and confirm `engine_status` reports `engineConnected: true`
 > **Path caveat (T-0.5):** this repo lives under `C:\Users\KOBI 2\...`, which contains a space. Use the
 > 8.3 short name (`C:\Users\KOBI2~1\...`) in MCP config, or relocate the repo to a space-free path.
 
+## Audio
+
+Every sound is **synthesised at load** from `game/data/audio.json` by `game/scripts/AudioDirector.ts`.
+There is no audio file in the build: nine clips (motor, blade, impact, spark, detach, crowd, sting,
+knockout, click) are rendered to 16-bit PCM WAV in-script and registered with `audio.loadClip`. The
+synth is seeded, so the same JSON always produces byte-identical clips.
+
+The engine **cannot verify any of this**. Its editor-profile `audio.*` surface never decodes a byte
+and never makes a sound - `loaded: true` comes back for five bytes of junk and for a dead URL alike
+(`engine-fixes.md` LIM-006). So audio is checked outside the engine, by two harnesses that test the
+shipped code rather than a copy of it:
+
+```sh
+node game/data/audio-check.js                  # the clips: header, level, loop seams, spectrum
+node game/data/audio-check.js --write-wav /tmp/bb-audio   # ...and dump .wav files to listen to
+node game/data/audio-wiring-check.mjs          # the wiring: 22 checks against a stubbed engine
+```
+
+`audio-check.js` extracts the synth block from `AudioDirector.ts` verbatim; `audio-wiring-check.mjs`
+imports the director itself. Neither can drift from what ships.
+
+Mix is `master x bus x clip gain`, over five buses in `audio.json`. Emit `battlebots.setBus`
+(`{ bus, volume }`) to move one live.
+
+> The repo root also carries an `Audio/` folder of sourced `.mp3` files from an earlier direction.
+> Nothing references them and they are not part of the build - keep them as reference or delete them.
+
 ## Data validation
 
 ```sh

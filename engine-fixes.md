@@ -31,6 +31,8 @@ every file touched. The three Docker containers report `healthy`.
 | LIM-001 | 🟡 | No per-instance script parameters | Fixed — `Script.params` |
 | LIM-005 | 🟡 | Cylinder axis disagreement | Fixed — documented + `scene.validate` check |
 | LIM-003 | 🟡 | Editor viewport ignores scene lighting | 🔬 Premise corrected — see below |
+| LIM-006 | 🟠 | Editor `audio.*` never decodes; `loaded: true` is meaningless | ⬜ Open — found building T-6.16 |
+| LIM-007 | 🟡 | `audio.loadClip` is async-only, unlike the rest of `audio.*` | ⬜ Open — worked around |
 | LIM-002 | 🟡 | Scripts cannot import each other | ⬜ Open — needs your call |
 | LIM-004 | 🟡 | `project.createOnDisk` unusable by an agent | ⬜ Open — platform-blocked |
 
@@ -326,6 +328,59 @@ is also several times the work. Say which and I'll do it.
 The pressure is lower than when this was filed: `ctx.call` and `Script.params` remove both reasons
 Battle Bots routed everything through a spawner marker, so what remains is the genuine need for shared
 *library* code rather than indirection.
+
+### LIM-006 — the editor never decodes audio, and says nothing about it
+
+Found while building the audio pass (T-6.16 – T-6.20). `audio.loadClip` stores the bytes, marks the
+clip `loaded: true`, and never looks at them again. There is no decode, no `AudioBuffer`, no duration,
+no sample rate, and nothing ever makes a sound in the editor profile:
+
+```js
+await call("audio.loadClip", { name: "junk",   source: { bytes: [1,2,3,4,5] } })  // -> loaded: true
+await call("audio.loadClip", { name: "gone",   source: { url: "/nope.wav" } })    // -> loaded: true
+engine.audioClips.clips.get("junk")   // { name, url, bytes, loaded: true }  — no buffer
+engine.audio                          // { playCount: 0, stopCount: 0, sources: Map(0) } after playing
+```
+
+Only an empty `bytes: []` is refused, and that is zod's `minItems`, not a decoder.
+
+This is defensible as a design — the editor is an authoring surface and a runtime build is what makes
+noise — but `loaded: true` actively asserts the opposite, and it is the only signal an agent gets.
+Every audio task in this project would have "passed" against five bytes of garbage. Two cheap fixes,
+either of which would be enough:
+
+- **Decode on load.** `AudioContext.decodeAudioData` on the bytes, report `loaded: false` plus a
+  reason when it fails, and expose `duration` / `sampleRate` on the clip record. That turns
+  `loaded` into the fact it claims to be.
+- **Or say so.** If decoding is deliberately out of scope for the editor profile, have `loadClip`
+  return `{ registered: true, decoded: false, note: "editor profile does not decode or play audio" }`
+  and have `audio.play` say the same. Honest and nearly free.
+
+Until then `loaded` cannot be trusted, so this repo verifies audio outside the engine:
+`game/data/audio-check.js` validates the WAV bytes numerically (header, level, loop seams, spectrum)
+and `game/data/audio-wiring-check.mjs` drives `AudioDirector` against a stubbed engine. Both extract
+or import the shipped code rather than reimplementing it.
+
+### LIM-007 — `audio.loadClip` is the only async tool in its namespace
+
+`audio.loadClip` is an `AsyncFunction`; `attachSource`, `play`, `stop`, `setVolume`, `setLoop`,
+`setListener` and `getSource` are all plain synchronous functions. So the `ctx.call` path that
+BUG-004 added — the one every script in this repo uses — works for eight of the nine and throws on
+the ninth:
+
+```
+MCP tool audio.loadClip is async and cannot be called synchronously
+```
+
+The error message is good and names the cure. The cost is that clip registration cannot happen in
+the same synchronous sweep as the rest of a script's `onStart`, so `AudioDirector` kicks the loads
+off through `engine.mcp.callTool` and gates playback on a `ready` flag until they land — a frame or
+two, inaudible, but a whole state machine that exists only because one tool in the namespace is
+shaped differently from its neighbours.
+
+Worth asking whether it needs to be async at all. It does no I/O in the `bytes` form — it stores an
+array — so the asynchrony appears to exist for the `url` form alone. Splitting the two, or resolving
+the bytes form synchronously, would remove the special case.
 
 ### LIM-004 — `createOnDisk` for agents
 

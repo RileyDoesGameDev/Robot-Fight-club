@@ -1,5 +1,5 @@
 {
-  "$comment": "Every sound in the game is SYNTHESISED at load from these numbers (T-6.16). There are no .wav files in the repo and no sourced audio. That is a deliberate match for the greybox art: the visuals are untextured primitives, so the audio is untextured waveforms, and the two read as one intentional style rather than as placeholder. It also keeps the build tiny and the whole mix tunable without a recompile. Colours of noise and exact frequencies were chosen by ear against the arena, not derived.",
+  "$comment": "Every sound in the game is SYNTHESISED at load from these numbers (T-6.16). No audio file is loaded, shipped, or referenced by the build. That is a deliberate match for the greybox art: the visuals are untextured primitives, so the audio is untextured waveforms, and the two read as one intentional style rather than as placeholder. It also keeps the build tiny and the whole mix tunable without a recompile. Colours of noise and exact frequencies were chosen by ear against the arena, not derived. NOTE: the repo root still carries an `Audio/` folder of sourced .mp3 files from an earlier direction. Nothing reads them — keep them as reference or delete them, but they are not part of the game.",
 
   "sampleRate": 22050,
 

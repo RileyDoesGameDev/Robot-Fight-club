@@ -39,6 +39,7 @@ const bundle = {
   inputMap: readJson(path.join(ROOT, "input-map.json")),
   aiWeights: readJson(path.join(ROOT, "ai", "weights.json")),
   vfx: readJson(path.join(ROOT, "vfx.json")),
+  audio: readJson(path.join(ROOT, "audio.json")),
 };
 
 fs.writeFileSync(path.join(ROOT, "bundle.json"), JSON.stringify(bundle, null, 2) + "\n");

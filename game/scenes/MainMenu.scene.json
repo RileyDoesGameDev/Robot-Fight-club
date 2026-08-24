@@ -125,6 +125,38 @@
           "params": {}
         }
       }
+    },
+    {
+      "id": 3410,
+      "parent": 6,
+      "components": {
+        "Transform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "Name": {
+          "value": "AudioDirector"
+        },
+        "Script": {
+          "behavior": "AudioDirector",
+          "enabled": true,
+          "params": {}
+        }
+      }
     }
   ]
 }
