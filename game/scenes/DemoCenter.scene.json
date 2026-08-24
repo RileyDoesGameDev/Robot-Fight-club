@@ -1307,9 +1307,9 @@
             1
           ],
           "scale": [
-            1,
-            1,
-            1
+            1.36,
+            0.06,
+            0.16
           ]
         },
         "Name": {
@@ -1369,33 +1369,6 @@
           "params": {
             "rpm": 150
           }
-        }
-      }
-    },
-    {
-      "id": 1544,
-      "parent": 1543,
-      "components": {
-        "Transform": {
-          "position": [
-            0,
-            0.02,
-            0
-          ],
-          "rotation": [
-            0,
-            0,
-            0,
-            1
-          ],
-          "scale": [
-            1.36,
-            0.06,
-            0.16
-          ]
-        },
-        "Name": {
-          "value": "Hazard_SpinnerWVisual"
         },
         "MeshRenderer": {
           "meshId": null,
@@ -1426,9 +1399,9 @@
             1
           ],
           "scale": [
-            1,
-            1,
-            1
+            1.36,
+            0.06,
+            0.16
           ]
         },
         "Name": {
@@ -1488,33 +1461,6 @@
           "params": {
             "rpm": 150
           }
-        }
-      }
-    },
-    {
-      "id": 1546,
-      "parent": 1545,
-      "components": {
-        "Transform": {
-          "position": [
-            0,
-            0.02,
-            0
-          ],
-          "rotation": [
-            0,
-            0,
-            0,
-            1
-          ],
-          "scale": [
-            1.36,
-            0.06,
-            0.16
-          ]
-        },
-        "Name": {
-          "value": "Hazard_SpinnerEVisual"
         },
         "MeshRenderer": {
           "meshId": null,

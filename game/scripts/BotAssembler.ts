@@ -19,15 +19,14 @@
  *   entities directly from `data/bundle.json`. T-2.5 - T-2.8 are superseded.
  *
  * STRUCTURE PRODUCED
- *   Bot_<role>_Chassis            unit-scaled body: Collider + RigidBody + Script
- *     Bot_<role>_ChassisVisual    child carrying the non-uniform visual scale
+ *   Bot_<role>_Chassis            body: Collider + RigidBody + MeshRenderer + Script
  *   Bot_<role>_<socket>_<partId>  one dynamic body per attached part, joined to
  *                                 the chassis by a BREAKABLE joint (T-5.1)
  *
- *   Every part is its own rigid body so it can be damaged and sheared off. Part
- *   bodies carry their visual directly (they have no children, so a non-uniform
- *   Transform.scale is safe there — unlike the chassis, whose socket children
- *   would inherit and be distorted by it).
+ *   Every part is its own rigid body so it can be damaged and sheared off, and every
+ *   body carries its own visual directly. Nothing here relies on parent transforms:
+ *   the renderer does not fold them, so anything drawn from a child entity lands at
+ *   the world origin instead of on its parent (BB-010).
  *
  *   The partId is encoded in the entity Name so the damage system can recover a
  *   part's hp/armorTier from the bundle without a component to store it in.
@@ -133,23 +132,29 @@ function assemble(engine, blueprintId, role, pose) {
     rigid.mass = chassisDef.mass;
   }
 
+  // The chassis carries its own visual, at its own non-uniform scale.
+  //
+  // This used to be a child entity (`Bot_<role>_ChassisVisual`) holding the scale, so
+  // that socket children would not inherit and be distorted by it. That reasoning no
+  // longer applies — attached parts are separate rigid bodies joined by physics, not
+  // children — and the child was actively broken: **the renderer does not fold parent
+  // transforms**, so a child at local [0,0,0] draws at the world ORIGIN rather than on
+  // its parent. Both bots' chassis rendered on top of each other in the middle of the
+  // arena, and each bot appeared as wheels and a weapon with no body.
+  //
+  // `Transform.scale` is safe to use here because colliders ignore it (engine-fixes.md
+  // BUG-010) — the Collider keeps the size its spec asks for, exactly as it did when
+  // the scale lived on the child. So this is the same geometry with one fewer entity
+  // per bot and no dependency on hierarchy rendering.
   const chassis = createEntity({
     components: {
       Name: { value: "Bot_" + role + "_Chassis" },
-      Transform: { position: p, rotation: q, scale: [1, 1, 1] },
+      Transform: { position: p, rotation: q, scale: chassisDef.visualScale || [1, 1, 1] },
       Collider: colliderFor(chassisDef.colliderSpec, contactThreshold),
       RigidBody: rigid,
-    },
-  }).content.entity;
-
-  const visual = createEntity({
-    components: {
-      Name: { value: "Bot_" + role + "_ChassisVisual" },
-      Transform: { position: [0, 0, 0], rotation: [0, 0, 0, 1], scale: chassisDef.visualScale },
       MeshRenderer: { primitive: chassisDef.primitive || "box", color: primary },
     },
   }).content.entity;
-  reparent({ child: visual, parent: chassis });
 
   // ── attached parts ────────────────────────────────────────────────────────
   const sockets = {};

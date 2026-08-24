@@ -19,7 +19,41 @@ Engine defects live in `engine-fixes.md`, not here. This file is the game's own.
 
 ## Major
 
-*None open.*
+### BB-010 — bots rendered with no body · **fixed**
+
+Reported from play: "the bots are missing the main body block". Both chassis and both arena
+hazards were authored as `<Thing>Visual` child entities, and the renderer draws a child at its
+LOCAL transform rather than its world one (`engine-fixes.md` LIM-010). All four therefore drew
+on top of each other at the world origin as a single purple box, while each bot appeared as
+wheels and a floating weapon.
+
+It reads as a modelling mistake, which is what made it slow to spot — `scene.worldTransform`
+reports the correct position for every one of those entities, because the ECS is right and only
+the draw is wrong.
+
+Fixed by not using hierarchy for anything drawn: `BotAssembler` puts the `MeshRenderer` on the
+chassis body, and the hazard visuals were merged into their bodies in `Arena01` and
+`DemoCenter`. Safe because colliders ignore `Transform.scale` (BUG-010), so a body can carry a
+non-uniform visual scale without deforming its collider.
+
+### BB-011 — there is no sound, and there cannot be · **open, not fixable in-game**
+
+Reported from play, and correcting something recorded optimistically earlier: the engine's
+`audio.*` backend never decodes or plays anything, in the **deployed runtime as well as** the
+editor (`engine-fixes.md` LIM-006). The clip record holds bytes and a `loaded: true` flag and no
+decoded buffer; `playCount` increments and nothing is heard.
+
+Everything T-6.16 – T-6.20 built is correct and inert: nine synthesised clips, a five-bus mix,
+per-voice pitch driven by rpm and road speed, an adaptive crowd bed, a spatial listener on the
+camera. All verified by state, none of it audible.
+
+Two ways out, and they are quite different in kind:
+- The engine grows a real audio backend, and everything already written starts working.
+- The game stops using `audio.*` and drives WebAudio itself from `AudioDirector` — it already
+  synthesises the PCM and already computes every gain and pitch, so it has everything it needs.
+  That is a real feature to build, not a workaround, and it means owning spatialisation.
+
+
 
 ---
 

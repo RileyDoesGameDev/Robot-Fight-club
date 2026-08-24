@@ -31,7 +31,8 @@ every file touched. The three Docker containers report `healthy`.
 | LIM-001 | 🟡 | No per-instance script parameters | Fixed — `Script.params` |
 | LIM-005 | 🟡 | Cylinder axis disagreement | Fixed — documented + `scene.validate` check |
 | LIM-003 | 🟡 | Editor viewport ignores scene lighting | 🔬 Premise corrected — see below |
-| LIM-006 | 🟠 | Editor `audio.*` never decodes; `loaded: true` is meaningless | ⬜ Open — found building T-6.16 |
+| LIM-006 | 🔴 | `audio.*` never decodes or plays, in ANY profile | ⬜ Open — the game has no sound |
+| LIM-010 | 🔴 | The renderer does not fold parent transforms | ⬜ Open — worked around in-game |
 | LIM-008 | 🟡 | No time scale anywhere in the engine | ⬜ Open — blocks slow-motion |
 | LIM-009 | 🔴 | A deployed build cannot run a project-backed game | ⬜ Open — **blocks T-8.2**, shimmed |
 | LIM-007 | 🟡 | `audio.loadClip` is async-only, unlike the rest of `audio.*` | ⬜ Open — worked around |
@@ -331,7 +332,31 @@ The pressure is lower than when this was filed: `ctx.call` and `Script.params` r
 Battle Bots routed everything through a spawner marker, so what remains is the genuine need for shared
 *library* code rather than indirection.
 
-### LIM-006 — the editor never decodes audio, and says nothing about it
+### LIM-006 — `audio.*` never decodes or plays anything, in any profile
+
+**Corrected 2026-08-24.** This was first filed against the *editor* profile, on the assumption
+that a deployed runtime would honour the AudioSource state the editor merely records. It does
+not. The deployed player's audio backend is the same stub:
+
+```js
+engine.audio.constructor.name            // "WT" — in the editor AND in a deployed build
+engine.audioClips.clips.get("bb_motor")  // { name, url, bytes, loaded: true }  — no buffer
+engine.audio.playCount                   // counts up; nothing is ever heard
+```
+
+There is no `AudioContext` on it and nothing calls `decodeAudioData`. (Both strings *do* appear
+in `player.js` — they belong to three.js audio classes the engine never instantiates, which is
+exactly the sort of thing that makes a grep look like good news.)
+
+So the game has no sound anywhere, and cannot have any through this API. Everything T-6.16 –
+T-6.20 built — the synthesis, the mix, the per-voice pitch, the spatial listener — is correct,
+verified, and inert. `audio.*` is an authoring surface that records intent for a backend that
+does not exist yet.
+
+The original text follows, because the specific complaint still stands and is what makes this
+worth fixing rather than documenting:
+
+### LIM-006 (original) — `loaded: true` is meaningless
 
 Found while building the audio pass (T-6.16 – T-6.20). `audio.loadClip` stores the bytes, marks the
 clip `loaded: true`, and never looks at them again. There is no decode, no `AudioBuffer`, no duration,
@@ -466,6 +491,30 @@ the filesystem alone, seeds the FS from a generated `seed.js`, rebuilds `call` a
 the script context, and carries `params` through `script.attach`. Every replacement asserts an
 exact match count and fails loudly, because the failure mode being avoided is a build that looks
 fine and is quietly dead. It is a stopgap and should not outlive the rebuild.
+
+### LIM-010 — the renderer does not fold parent transforms
+
+Found when the built game showed bots with no bodies. A child entity carrying a `MeshRenderer`
+is drawn at its LOCAL transform, not its world one — so a visual parented to a moving body at
+local `[0,0,0]` renders at the world origin instead of on its parent.
+
+The ECS itself is correct: `scene.worldTransform` folds the chain and returns the right answer.
+It is only the draw that ignores it, which is what makes it so confusing to diagnose — every
+tool you would use to check agrees the entity is in the right place.
+
+In this game it produced a memorable symptom. Both bots' chassis and both arena hazards were
+authored as `<Thing>Visual` children, so all four drew on top of each other in the middle of the
+arena as a single purple box, and each bot appeared as wheels and a floating weapon with no
+body. It reads as a modelling mistake rather than a renderer one.
+
+Worked around by not using hierarchy for anything drawn: `BotAssembler` now puts the
+`MeshRenderer` on the chassis body itself, and the authored hazard visuals were merged into
+their bodies. That is viable here only because colliders ignore `Transform.scale` (BUG-010), so
+a body can carry a non-uniform visual scale without deforming its own collider — the exact
+reason the child existed in the first place.
+
+It is not a general fix. Parenting is the natural way to express "this visual belongs to that
+body", and every future scene will reach for it.
 
 ### LIM-004 — `createOnDisk` for agents
 

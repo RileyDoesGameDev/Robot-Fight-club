@@ -81,13 +81,30 @@ function slugify(name) {
  */
 const UI_DESIGN_HEIGHT = 720;
 
+/**
+ * Smallest canvas height we will believe. A canvas that has not been laid out yet
+ * reports its default 150px, and a UI built against that number comes out at the
+ * minimum scale — which is the "it boots squished" bug. Anything under this is
+ * treated as "not measured" rather than as a very short window.
+ */
+const UI_MIN_BELIEVABLE_H = 240;
+
 function uiPx(size) {
   let h = 0;
   try {
     const canvases = (typeof document !== "undefined" && document.querySelectorAll)
       ? document.querySelectorAll("canvas") : [];
-    for (const c of canvases) h = Math.max(h, c.clientHeight || 0);
-    if (!h) h = (typeof globalThis !== "undefined" && globalThis.innerHeight) || UI_DESIGN_HEIGHT;
+    for (const c of canvases) {
+      const ch = c.clientHeight || 0;
+      if (ch >= UI_MIN_BELIEVABLE_H) h = Math.max(h, ch);
+    }
+    // The window is laid out before any script runs, so it is the reliable fallback
+    // when the canvas is not measurable yet. It is the second choice rather than the
+    // first because in the editor it is the whole browser window, not the game view.
+    if (!h) {
+      const w = (typeof globalThis !== "undefined" && globalThis.innerHeight) || 0;
+      h = w >= UI_MIN_BELIEVABLE_H ? w : UI_DESIGN_HEIGHT;
+    }
   } catch (err) {
     h = UI_DESIGN_HEIGHT;
   }
