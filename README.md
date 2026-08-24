@@ -105,6 +105,40 @@ the editor's MCP tab and confirm `engine_status` reports `engineConnected: true`
 > **Path caveat (T-0.5):** this repo lives under `C:\Users\KOBI 2\...`, which contains a space. Use the
 > 8.3 short name (`C:\Users\KOBI2~1\...`) in MCP config, or relocate the repo to a space-free path.
 
+## Playing it
+
+The game runs in a Docker container at **<http://localhost:4300>**. Open it and play — `W`/`S`
+drive, `A`/`D` turn, `Space` spins the weapon, `R` self-rights, `Esc` pauses.
+
+```sh
+docker ps --filter name=battle-bots      # it restarts with Docker
+docker start battle-bots                 # if it is stopped
+```
+
+> **Keep the tab in the foreground.** Chrome suspends `requestAnimationFrame` in hidden tabs, so
+> a backgrounded game does not merely slow down, it stops. That is browser behaviour, not a bug.
+
+### Rebuilding it
+
+A stock `build.export` **cannot run this game** — see `engine-fixes.md` LIM-009. The deployed
+player is an older engine than the editor: no project filesystem outside the editor profile, no
+`ctx.call` on the script context, and `script.attach` still drops `params`. The export succeeds,
+the page loads, and every button is dead.
+
+`tools/shim-build.js` patches the exported artifact back into a working state. To rebuild:
+
+1. Push the repo's `game/scenes/` and `game/data/` into the engine project (see below).
+2. Load `MainMenu`, stop simulation, and `build.export --format site --name battle-bots`.
+3. Copy `index.html`, `bundle.json`, `player.js` into `build/battle-bots/`, and write a
+   `seed.js` containing every `/data/**` and `/scenes/**` file as
+   `globalThis.__SMPL_SEED_FILES__ = { "<path>": "<contents>", ... }`.
+4. `node tools/shim-build.js build/battle-bots`
+5. `docker restart battle-bots`
+
+The shim asserts an exact match count for every replacement and fails loudly rather than
+producing a build that looks fine and is quietly dead. If the engine is ever rebuilt, expect it
+to fail — and prefer deleting it to loosening it.
+
 ## Art direction and naming (T-4.22)
 
 **The greybox is the art direction.** Untextured primitives are what ships - this is a decision, not

@@ -33,6 +33,7 @@ every file touched. The three Docker containers report `healthy`.
 | LIM-003 | 🟡 | Editor viewport ignores scene lighting | 🔬 Premise corrected — see below |
 | LIM-006 | 🟠 | Editor `audio.*` never decodes; `loaded: true` is meaningless | ⬜ Open — found building T-6.16 |
 | LIM-008 | 🟡 | No time scale anywhere in the engine | ⬜ Open — blocks slow-motion |
+| LIM-009 | 🔴 | A deployed build cannot run a project-backed game | ⬜ Open — **blocks T-8.2**, shimmed |
 | LIM-007 | 🟡 | `audio.loadClip` is async-only, unlike the rest of `audio.*` | ⬜ Open — worked around |
 | LIM-002 | 🟡 | Scripts cannot import each other | ⬜ Open — needs your call |
 | LIM-004 | 🟡 | `project.createOnDisk` unusable by an agent | ⬜ Open — platform-blocked |
@@ -412,6 +413,59 @@ its own easing off `dt` has to agree with it.
 Until then `MatchCamera` does what it can honestly: the shake and the hit stop are camera
 effects, and the knockout gets a cinematic push-in rather than a claimed slow-mo. The
 distinction is written into that file so nobody later assumes the game has time dilation.
+
+### LIM-009 — the deployed runtime is a different, older engine
+
+The blocker for T-8.2. `build.export` produces a build that cannot run this game, for three
+separate reasons that all point the same way: **the player bundled into a deployment is behind
+the editor, and is missing fixes this repo already has filed as done.**
+
+**1. No project filesystem.** The capability set is chosen by profile, and only the editor gets one:
+
+```js
+const cb = { hasFilesystem: !1, ... }, lb = { hasFilesystem: !0, ... };
+function hb(t) { return t === "editor" ? lb : cb; }
+```
+
+Every tool with `requires: ["hasFilesystem"]` — `project.loadScene`, `project.readFile`,
+`project.writeFile` — is therefore never registered in a deployment. This game keeps all of its
+data in `/data/bundle.json`, moves between scenes with `loadScene`, and hands bot choice, session
+state and match history between scenes as files. None of it works. The player even *ships* a
+complete in-memory FS (`class fv`, whose constructor already accepts a seed map); it is
+constructed empty and nothing can reach it, and the bundle format has no `files` key to fill it.
+
+**2. No `ctx.call`.** The runtime's script host invokes hooks with `{ entity, world, dt, engine }`.
+BUG-004 added `ctx.call` and this repo's every script is written against it, so in a deployment
+each one throws `call is not a function` on its first line of `onStart`. There is no synchronous
+dispatch at all — `mcp.callTool` is async-only — although individual tool handlers in `toolMap`
+are plain synchronous functions, which is what makes a shim possible.
+
+**3. No `Script.params`.** LIM-001 is recorded in this document as *fixed*, and it is — in the
+editor. The deployed `script.attach` still takes `{entity, behavior, enabled}` and builds the
+component without params, so every bot assembles with no role, no motor multipliers, no AI
+personality and no difficulty. The component itself is fine: its `create()` passes `params`
+straight through. Only the tool is behind.
+
+None of this is visible from the outside. The export reports success, the budget check passes,
+the page loads, the splash fades, and you get whatever scene was live at export time with every
+button dead — the menu even *looks* right, because its UI entities were baked into the scene.
+
+**What would fix it properly**, roughly in order of how much it would buy:
+
+- Rebuild the deployed player from current engine source. Two of the three problems above are
+  fixes that already exist and simply have not shipped to this artifact. This is probably the
+  whole fix, and it is a build-pipeline question rather than an engineering one.
+- Give the bundle format a `files` map that the player seeds its FS from at boot. That is the
+  missing half of "export a game that reads its own data".
+- Add a capability profile for a deployed game — filesystem yes, subprocess and MCP manager no.
+  Granting the full editor set instead **wedges the main thread on boot**, silently: the page
+  reaches engine-ready, drops the splash, and then freezes with no error.
+
+Until then `tools/shim-build.js` patches the exported artifact: it narrows the capability gate to
+the filesystem alone, seeds the FS from a generated `seed.js`, rebuilds `call` and `params` onto
+the script context, and carries `params` through `script.attach`. Every replacement asserts an
+exact match count and fails loudly, because the failure mode being avoided is a build that looks
+fine and is quietly dead. It is a stopgap and should not outlive the rebuild.
 
 ### LIM-004 — `createOnDisk` for agents
 

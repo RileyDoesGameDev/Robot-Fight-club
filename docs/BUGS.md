@@ -42,6 +42,20 @@ check that compares the project's data files against the repo's and refuses to s
 least shouts. Worth doing before the playtests, since a stale-data session produces data that
 looks fine and is worthless.
 
+### BB-008 — a stock build is silently dead, and looks fine
+
+Not our bug, but it is the one most likely to waste someone's afternoon, so it is recorded here
+as well as in `engine-fixes.md` (LIM-009). `build.export` reports success, the budget check
+passes, the page loads, the splash fades — and every button does nothing, because the deployed
+player has no project filesystem, no `ctx.call`, and drops `Script.params`.
+
+The old `my-game` deployment on `:4200` is the trap in its purest form: it *looks* like a
+working main menu, complete with a win/loss record. Those numbers are frozen text baked into
+the scene at export time. Nothing behind them is alive.
+
+Shimmed by `tools/shim-build.js`; the container on `:4300` is a real, playable build. Reopen if
+the engine is rebuilt and the shim stops matching.
+
 ### BB-002 — `scene.query` reorders components on export
 
 Re-exporting an untouched scene produces a diff: `Name` moves relative to `MeshRenderer` on
@@ -68,11 +82,13 @@ Reopen if a `timeScale` ever lands.
 fires once, comes from three.js rather than from this project — the direct cost of enabling
 FXAA in T-5.13. Recorded so it is not rediscovered in week 8 and mistaken for something new.
 
-### BB-005 — two containers report `unhealthy`
+### BB-005 — two containers report `unhealthy` · **no longer reproduces**
 
-`engine-runtime` and `engine-editor` report unhealthy in `docker ps` while working perfectly
-(T-0.2). Their healthchecks are wrong, not the services. Not blocking authoring; would be
-embarrassing in a handover.
+`engine-runtime` and `engine-editor` reported unhealthy in `docker ps` while working perfectly
+(T-0.2). Re-checked 2026-08-24 during the build work: all three services now report `healthy`.
+Nothing here changed them, so either the healthchecks were fixed upstream or they were failing
+on a transient the containers have since settled out of. Left recorded rather than deleted,
+because "it went away on its own" is worth knowing if it comes back.
 
 ---
 
