@@ -15,8 +15,9 @@ Derived from `Battle_Bots_Project_Proposal (1).docx`. Every task is written to b
 ### 0.1 Stack up and reachable
 - [x] **T-0.1** Bring up the Docker stack: `docker compose up -d --build` (editor `:4174`, runtime `:4173`, deployer `:4180/health`).
   - **Result:** stack up — `engine-runtime` :4173, `engine-editor` :4174, `engine-deployer` :4180.
-- [~] **T-0.2** Verify all three services healthy (`docker compose ps`) and the editor loads in the browser.
-  - **Result:** editor loads and is fully usable on :4174, but `docker ps` reports `engine-runtime` and `engine-editor` as **unhealthy** (deployer is healthy). Their healthchecks need a look — not blocking authoring.
+- [x] **T-0.2** Verify all three services healthy (`docker compose ps`) and the editor loads in the browser. **(V)**
+  - ~~Editor loads and is fully usable on :4174, but `docker ps` reports `engine-runtime` and `engine-editor` as **unhealthy**.~~
+  - **Re-checked 2026-08-24 during the build work: all three report `healthy`.** `engine-runtime`, `engine-editor` and `engine-deployer` are all up and passing. Nothing in this project changed them, so either the healthchecks were fixed upstream or they were failing on a transient that has since settled. Recorded rather than silently closed, because "it fixed itself" is worth knowing if it comes back (BB-005).
 - [x] **T-0.3** Build and register `smpl-mcp-bridge` so an AI agent can drive the live editor; confirm the full ~178-tool catalog appears after **Expose** (`ws://localhost:8765`).
   - **Result:** bridge works; catalog is **~380 tools**, not ~178 — and it contains **no `physics_*` namespace** (see T-1.16).
 - [x] **T-0.4** Confirm `engine_status` reports `engineConnected: true` from the agent side. **(V)**
@@ -230,7 +231,11 @@ Derived from `Battle_Bots_Project_Proposal (1).docx`. Every task is written to b
   - The shared contract is `spinFraction`: 0..1 of "how live is this weapon right now". DamageSystem scales weapon damage by it and knows nothing about modes — for a spinner it is rpm over target, for a swing weapon it is 1 during the stroke and 0 otherwise. That is what makes an axe a burst weapon **without the damage model knowing what an axe is**, and it needed no change to the damage model at all.
   - **Bug found in testing:** swings originally fired on the press EDGE, which is wrong for the AI — UtilityAi holds `spinCommand` for as long as it wants the weapon live, so an axe swung once per engagement instead of once per cooldown. The cooldown was already the rate limit, making the edge check redundant for the human too. Measured after the fix: **axe 10 swings in its 10 s commanded window (1.1 s cooldown), flipper 9 across 14 s (1.6 s cooldown)** — both within a swing of nominal. **(V)**
   - Three new bots carry them so every type is reachable from Bot Select: **Havoc** (drum), **Gavel** (axe), **Tipster** (flipper). Roster 6 → 9, parts 14 → 17. Verified live: `mode spin, target 1100 rpm` and `mode swing, arc −1.20 → 0.90 rad`, `scene.validate` clean, 0 engine errors.
-- [ ] **T-4.6** Per-weapon audio + VFX hooks (stubbed now, filled in weeks 5–6).
+- [x] **T-4.6** Per-weapon audio + VFX hooks (stubbed now, filled in weeks 5–6).
+  - **Filled in as the task anticipated**, and closed here because the hooks demonstrably exist — this was still ticking over as open long after the work landed.
+  - `WeaponController` emits `weaponState` (rpm, spin fraction, jammed), `weaponSwing` and, via `DamageSystem`, `weaponHit` with contact force. `VfxDirector` consumes them for force-scaled sparks; `AudioDirector` consumes them for the blade loop pitched by real rpm, impact and spark one-shots, and a jam clank.
+  - The hooks are per-weapon without either director knowing what a weapon *is*: everything is keyed off the archetype-agnostic `weaponState` contract, so a passive wedge (rpm 0 forever) correctly produces no blade voice and no spin VFX.
+  - **Caveat:** the audio half is wired and inert until the engine can play a sound at all (BB-011 / LIM-006). The hooks are done; the output is not.
 
 ### 4.2 Armor & weight classes
 - [x] **T-4.7** Add armor tiers (light / medium / heavy) with mass↔protection tradeoffs.
@@ -267,7 +272,10 @@ Derived from `Battle_Bots_Project_Proposal (1).docx`. Every task is written to b
 - [>] **T-4.12** Add decals/patterns using the texture tools (`texture_create`, `texture_paintStroke`, `texture_applyToEntity`) or a UV-atlas swap. Pick the cheaper path.
   - **Deferred (2026-08-19)** with player customisation.
 - [ ] **T-4.13** Add a wear/scratch overlay that intensifies with damage state.
-- [ ] **T-4.14** Add bot naming + a saved bot roster with thumbnails (`assets_thumbnail` or `renderer_captureScreenshot`).
+- [~] **T-4.14** Add bot naming + a saved bot roster with thumbnails (`assets_thumbnail` or `renderer_captureScreenshot`).
+  - **Naming and the roster are done; thumbnails are not.** 9 named blueprints in `game/data/bots/` with a live `BotSelect` roster that shows each bot's name, weight class, mass, weapon, armour total and estimated top speed, and previews the highlighted bot on a turntable.
+  - The turntable preview is arguably the better answer than a thumbnail — it is the real bot, assembled from the same blueprint the match will use, rather than a picture that can go stale. But it is not what the task asks for, and a static thumbnail is what a roster *grid* would need, so this stays open rather than being quietly redefined.
+  - Blocked in practice by the same thing as T-8.4: `renderer.captureScreenshot` refuses when the Game view has no active ECS camera, and returns an error rather than a blank PNG (BUG-012). Capturing a bot portrait needs a camera staged for it.
   - **Re-aimed (2026-08-19):** player naming is deferred, but thumbnails are now wanted for the **T-2.21 Bot Select** roster instead of for player-saved bots.
 - [>] **T-4.15** Extend `BotBlueprint` to persist paint/decal choices; verify round-trip. **(V)**
   - **Deferred (2026-08-19).** Authored `paint` is already in the `BotBlueprint` schema and survives save/load; only player-chosen paint is out.
@@ -628,7 +636,6 @@ Derived from `Battle_Bots_Project_Proposal (1).docx`. Every task is written to b
 - [x] **T-8.3** Check the build report (`build_getReport`) for size and asset warnings; trim if load time is bad.
   - **495 KB bundle against a 5 MB budget — 10 %, nothing to trim.** 18 scripts, 9 audio clips, 0 mesh assets, 0 materials, 0 paint textures, 0 warnings, `withinBudget: true`.
   - The greybox descope (§4.4) is why: with no meshes and no textures, the entire game is scripts, scene JSON and 231 KB of synthesised PCM. The two large files in a deployment are the engine's own `player.js` (4.9 MB) and the splash GIF inlined into `index.html` (2 MB) — both engine artifacts, neither ours, and neither something this project can trim.
-- [ ] **T-8.3** Check the build report (`build_getReport`) for size and asset warnings; trim if load time is bad.
 - [ ] **T-8.4** Capture marketing screenshots (`renderer_captureScreenshot`, `viewport_captureViews`).
 - [ ] **T-8.5** Cut the trailer (build → best match footage → 45–60s).
 - [ ] **T-8.6** Build the store/presentation page: description, screenshots, trailer, playable link.
