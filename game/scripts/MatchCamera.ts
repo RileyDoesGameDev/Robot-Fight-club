@@ -28,11 +28,54 @@
  *   pit knockout, so bots below `ignoreBelowY` are dropped from the framing and the
  *   camera settles on whoever is left.
  *
+ * GAME FEEL (T-7.9)
+ *   Impact feedback lives here because the camera is the only thing in the game that
+ *   can react to a hit without changing its outcome. Three effects, all of them
+ *   POSITION-only, so the rule above still holds - the authored rotation is never
+ *   touched, and none of this can alter a match.
+ *
+ *   Shake        Trauma-based, not "jitter for N frames". A hit adds trauma scaled by
+ *                its force; trauma decays linearly and the offset is trauma SQUARED,
+ *                so a big hit falls off hard and a small one barely registers. Losing
+ *                a part adds the most - it is the biggest thing that happens.
+ *                The displacement is three sine waves at unrelated frequencies rather
+ *                than per-frame randomness, which reads as a camera being shoved
+ *                instead of a bad video signal, and is frame-rate independent for free.
+ *   Hit stop     A real hitstop freezes the simulation. This engine has no timescale
+ *                (see below), so what freezes is the CAMERA: for ~80 ms after a big
+ *                hit it stops tracking entirely and only shakes. Perceptually most of
+ *                hitstop is the view going rigid at the moment of contact, so this
+ *                buys most of the effect for none of the risk - a simulation freeze
+ *                would change physics outcomes, which is a gameplay change wearing
+ *                polish's clothes.
+ *   Knockout     Asked for as slow-motion. NOT POSSIBLE - see the note below. What
+ *                happens instead is a slow cinematic push-in over `koPushSeconds`,
+ *                which gives the ending a beat of its own. Called what it is rather
+ *                than filed as slow-mo.
+ *
+ * WHY THERE IS NO SLOW MOTION (engine-fixes.md LIM-008)
+ *   The engine exposes no time scale. `engine.clock.stepSeconds` looks like one and is
+ *   not: the accumulator drains real time regardless, so halving it doubles the step
+ *   rate and leaves simulation speed identical - measured 61 steps/s at 1/60 and 120
+ *   steps/s at 1/120, both advancing 1.0 s of sim per wall second. It is a fidelity
+ *   knob. `game.pause` is a full stop with its own event, not a dilation, and
+ *   `editor.setRunning` + `stepFrames` would work only in the editor and not in a
+ *   deployed build. Slow motion needs a real `timeScale` on the clock.
+ *
  * params:
  *   minDistance / maxDistance   how far back it may sit, in metres along `dir`
  *   metresPerSeparation         extra distance per metre between the bots
  *   smoothing                   0..1 per-frame lerp; 1 is instant
  *   ignoreBelowY                bots below this are not framed
+ *   shakeMinForceN              hits below this do not shake the camera at all
+ *   shakeMaxForceN              the force that earns a full-trauma shake
+ *   shakeMetres                 peak displacement at full trauma
+ *   traumaDecayPerSecond        how fast a shake settles
+ *   detachTrauma                trauma added when a part is torn off
+ *   hitStopSeconds              how long tracking freezes after a big hit
+ *   hitStopMinForceN            the force worth freezing for
+ *   koPushMetres                how far the camera eases in on a knockout
+ *   koPushSeconds               how long that push takes
  */
 
 const DEFAULTS = {
@@ -41,7 +84,25 @@ const DEFAULTS = {
   metresPerSeparation: 1.15,
   smoothing: 0.08,
   ignoreBelowY: -0.5,
+  // T-7.9. Forces line up with the damage model: DamageSystem reports contact force
+  // in newtons, and a solid weapon hit lands in the low thousands.
+  shakeMinForceN: 1200,
+  shakeMaxForceN: 9000,
+  shakeMetres: 0.42,
+  traumaDecayPerSecond: 1.6,
+  detachTrauma: 0.75,
+  hitStopSeconds: 0.08,
+  hitStopMinForceN: 5000,
+  koPushMetres: 3.2,
+  koPushSeconds: 1.4,
 };
+
+/**
+ * Three unrelated frequencies, so the sum never repeats on a short cycle and the
+ * shake does not read as a loop. Prime-ish ratios on purpose.
+ */
+const SHAKE_FREQ = [37.1, 23.7, 29.3];
+const SHAKE_PHASE = [0, 2.1, 4.3];
 
 export default function create() {
   let dir = null;        // normalised authored offset from the origin
@@ -49,6 +110,17 @@ export default function create() {
   let current = null;    // smoothed camera position
   let rescan = 0;
   let bots = [];
+
+  // T-7.9 game feel.
+  let trauma = 0;        // 0..1; shake is trauma squared
+  let shakeClock = 0;    // seconds, drives the sine displacement
+  let hitStop = 0;       // seconds of tracking freeze left
+  let koPush = 0;        // 0..1 eased progress of the knockout push-in
+  let koActive = false;
+  // Script params arrive on the update hook, so they are cached for the event
+  // handlers, which fire outside it. Until the first update they read DEFAULTS.
+  let paramsRef = null;
+  const offs = [];
 
   function num(params, k) {
     const v = params ? params[k] : undefined;
@@ -79,12 +151,58 @@ export default function create() {
       current = null;
       bots = findBots(call);
       rescan = 0;
+      trauma = 0; shakeClock = 0; hitStop = 0; koPush = 0; koActive = false;
+
+      // T-7.9 - impact feedback. Pure consumers of channels that already exist, so
+      // nothing here is on the damage path and removing it changes no outcome.
+      offs.push(engine.mcp.on("battlebots.weaponHit", (p) => {
+        if (!p) return;
+        const force = p.force || 0;
+        const lo = num(paramsRef, "shakeMinForceN");
+        const hi = num(paramsRef, "shakeMaxForceN");
+        if (force < lo) return;
+        const t = Math.min(1, (force - lo) / Math.max(1, hi - lo));
+        // Take the strongest claim on the camera rather than summing: two hits in a
+        // frame should not shake twice as hard as physics can justify.
+        trauma = Math.min(1, Math.max(trauma, t));
+        if (force >= num(paramsRef, "hitStopMinForceN")) {
+          hitStop = Math.max(hitStop, num(paramsRef, "hitStopSeconds"));
+        }
+      }));
+
+      offs.push(engine.mcp.on("battlebots.partDetached", () => {
+        trauma = Math.min(1, Math.max(trauma, num(paramsRef, "detachTrauma")));
+        hitStop = Math.max(hitStop, num(paramsRef, "hitStopSeconds"));
+      }));
+
+      // The ending gets a beat. Not slow motion - the engine has none (LIM-008).
+      offs.push(engine.mcp.on("battlebots.knockout", () => { koActive = true; }));
+      offs.push(engine.mcp.on("battlebots.matchResult", () => { koActive = true; }));
+
       engine.console.log("[Camera] shared view — base " + Math.round(len * 10) / 10
-        + " m along [" + dir.map((x) => Math.round(x * 100) / 100).join(", ") + "]");
+        + " m along [" + dir.map((x) => Math.round(x * 100) / 100).join(", ") + "]"
+        + " — shake/hit-stop armed");
+    },
+
+    onDestroy() {
+      for (const off of offs) off();
+      offs.length = 0;
+      trauma = 0; hitStop = 0; koPush = 0; koActive = false;
     },
 
     onUpdate({ entity, call, dt, params }) {
       if (!dir) return;
+      paramsRef = params;
+
+      // T-7.9 timers. Trauma decays linearly; the SQUARE of it drives displacement,
+      // which is what makes a shake land hard and leave quickly instead of sagging.
+      shakeClock += dt;
+      if (trauma > 0) trauma = Math.max(0, trauma - num(params, "traumaDecayPerSecond") * dt);
+      if (hitStop > 0) hitStop -= dt;
+      if (koActive && koPush < 1) {
+        koPush = Math.min(1, koPush + dt / Math.max(0.01, num(params, "koPushSeconds")));
+      }
+
       // Bots are assembled after this script starts, so keep looking until found.
       rescan -= dt;
       if (rescan <= 0 || !bots.length) { rescan = 1; bots = findBots(call); }
@@ -105,21 +223,49 @@ export default function create() {
 
       const target = [sx / n, 0, sz / n];
       const spread = n > 1 ? Math.max(maxX - minX, maxZ - minZ) : 0;
-      const want = Math.max(num(params, "minDistance"),
+      let want = Math.max(num(params, "minDistance"),
         Math.min(num(params, "maxDistance"),
           baseDistance * 0.82 + spread * num(params, "metresPerSeparation")));
+
+      // T-7.9 knockout beat. Pulling `want` in rather than moving the camera by hand
+      // keeps the push on the same authored axis as everything else, so the framing
+      // tightens without the view ever changing direction. Smoothstep, so it eases
+      // at both ends instead of arriving with a jolt.
+      if (koPush > 0) {
+        const e = koPush * koPush * (3 - 2 * koPush);
+        want = Math.max(num(params, "minDistance") * 0.55, want - num(params, "koPushMetres") * e);
+      }
 
       const goal = [target[0] + dir[0] * want, target[1] + dir[1] * want, target[2] + dir[2] * want];
       if (!current) current = goal.slice();
       // Frame-rate-independent smoothing: a raw lerp by a constant would chase
       // faster on a faster machine, which is exactly the kind of thing that makes a
       // camera feel different on someone else's laptop.
-      const k = 1 - Math.pow(1 - Math.min(0.999, num(params, "smoothing")), dt * 60);
+      //
+      // T-7.9 hit stop: while it is running, `k` is zero and the camera stops
+      // tracking altogether. It does not freeze in place - the shake below still
+      // moves it - so the view goes rigid against the world rather than dead.
+      const k = hitStop > 0
+        ? 0
+        : 1 - Math.pow(1 - Math.min(0.999, num(params, "smoothing")), dt * 60);
       for (let i = 0; i < 3; i++) current[i] += (goal[i] - current[i]) * k;
+
+      // T-7.9 shake. Three sine waves at unrelated frequencies: smooth, deterministic,
+      // and frame-rate independent, where per-frame randomness would alias into
+      // different-looking noise on a 144 Hz monitor. Applied as an offset at write
+      // time so `current` itself never accumulates shake - otherwise the smoothing
+      // above would chase the shaken position and the camera would drift.
+      let ox = 0, oy = 0, oz = 0;
+      if (trauma > 0) {
+        const amp = num(params, "shakeMetres") * trauma * trauma;
+        ox = amp * Math.sin(shakeClock * SHAKE_FREQ[0] + SHAKE_PHASE[0]);
+        oy = amp * Math.sin(shakeClock * SHAKE_FREQ[1] + SHAKE_PHASE[1]) * 0.6;
+        oz = amp * Math.sin(shakeClock * SHAKE_FREQ[2] + SHAKE_PHASE[2]);
+      }
 
       // Position only. The authored rotation is deliberately never written.
       call("scene.setComponent", { entity, component: "Transform",
-        patch: { position: [current[0], current[1], current[2]] } });
+        patch: { position: [current[0] + ox, current[1] + oy, current[2] + oz] } });
     },
   };
 }

@@ -32,6 +32,7 @@ every file touched. The three Docker containers report `healthy`.
 | LIM-005 | 🟡 | Cylinder axis disagreement | Fixed — documented + `scene.validate` check |
 | LIM-003 | 🟡 | Editor viewport ignores scene lighting | 🔬 Premise corrected — see below |
 | LIM-006 | 🟠 | Editor `audio.*` never decodes; `loaded: true` is meaningless | ⬜ Open — found building T-6.16 |
+| LIM-008 | 🟡 | No time scale anywhere in the engine | ⬜ Open — blocks slow-motion |
 | LIM-007 | 🟡 | `audio.loadClip` is async-only, unlike the rest of `audio.*` | ⬜ Open — worked around |
 | LIM-002 | 🟡 | Scripts cannot import each other | ⬜ Open — needs your call |
 | LIM-004 | 🟡 | `project.createOnDisk` unusable by an agent | ⬜ Open — platform-blocked |
@@ -381,6 +382,36 @@ shaped differently from its neighbours.
 Worth asking whether it needs to be async at all. It does no I/O in the `bytes` form — it stores an
 array — so the asynchrony appears to exist for the `url` form alone. Splitting the two, or resolving
 the bytes form synchronously, would remove the special case.
+
+### LIM-008 — there is no time scale, and the one that looks like it is not
+
+Found doing game-feel polish (T-7.9). Hit stop and slow motion both need to run the
+simulation slower than real time for a moment, and nothing in the engine can do it.
+
+`engine.clock.stepSeconds` is the obvious candidate and is a trap. It sets the fixed step
+size, but the accumulator still drains real time, so shrinking it just runs more steps of
+less each and leaves wall-clock speed identical. Measured directly:
+
+| `stepSeconds` | steps per wall second | sim seconds per wall second |
+|---|---|---|
+| 1/60 | 61 | 1.02 |
+| 1/120 | 120 | 1.00 |
+
+It is a fidelity knob wearing a timescale's clothes, and it is the kind of thing someone
+will ship a broken slow-mo on. The other candidates do not work either: `game.pause` is a
+full stop that fires its own state transition, `anim.setSpeed` reaches only the animator
+and not physics, and `editor.setRunning(false)` plus `engine.stepFrames` would work in the
+editor and do nothing in a deployed build, which is the one place it needs to work.
+
+What would fix it is small: a `timeScale` on the clock, applied where real delta is added
+to the accumulator, so `0.15` gives slow motion and `0` gives a true hit stop. Physics is
+already fixed-step, so nothing downstream needs to change — the step size stays put and
+only the rate of steps changes. Scripts would want it readable too, since anything doing
+its own easing off `dt` has to agree with it.
+
+Until then `MatchCamera` does what it can honestly: the shake and the hit stop are camera
+effects, and the knockout gets a cinematic push-in rather than a claimed slow-mo. The
+distinction is written into that file so nobody later assumes the game has time dilation.
 
 ### LIM-004 — `createOnDisk` for agents
 

@@ -105,6 +105,28 @@ the editor's MCP tab and confirm `engine_status` reports `engineConnected: true`
 > **Path caveat (T-0.5):** this repo lives under `C:\Users\KOBI 2\...`, which contains a space. Use the
 > 8.3 short name (`C:\Users\KOBI2~1\...`) in MCP config, or relocate the repo to a space-free path.
 
+## Art direction and naming (T-4.22)
+
+**The greybox is the art direction.** Untextured primitives are what ships - this is a decision, not
+a placeholder stage (TASKS.md §4.4). Nothing imports a mesh, so there are no glTF assets and no named
+materials; `MeshRenderer.primitive` plus a colour is the whole renderer contract, and every collider
+is an authored primitive rather than a hull decomposition.
+
+Naming, as it is actually in force:
+
+| Thing | Convention | Example |
+|---|---|---|
+| Part id | `<category>-<variant>-<size or kind>` | `ch-wedge-m`, `wp-spinner-h` |
+| Categories | `ch-` chassis, `wh-` wheel, `wp-` weapon, `ar-` armor, `mt-` motor | `ar-heavy`, `mt-torque` |
+| Size suffix | `-l` / `-m` / `-h` for chassis, wheels, armor | `wh-l`, `ch-brick-h` |
+| Weapon kind suffix | `-h` horizontal bar, `-v` vertical drum, `-a` axe, `-p` passive | `wp-drum-v`, `wp-wedge-p` |
+| Scene singleton | PascalCase | `MatchCamera`, `AudioDirector` |
+| Arena geometry | `Group_Part` | `Floor_Center`, `Pit_NW` |
+| Render-only child of a body | parent name + `Visual` | `Hazard_SpinnerWVisual` |
+| Runtime bot entity | `Bot_<role>_<socket>_<partId>` | `Bot_player_weapon_top_wp-spinner-h` |
+| Spawn marker | `BotSpawn:<blueprint>:<role>` | `BotSpawn:__selected:player` |
+| Audio clip / voice / bed | `bb_<name>` / `AudioVoice_<n>` / `AudioBed_<Name>` | `bb_impact`, `AudioBed_Crowd` |
+
 ## Audio
 
 Every sound is **synthesised at load** from `game/data/audio.json` by `game/scripts/AudioDirector.ts`.
@@ -131,6 +153,36 @@ Mix is `master x bus x clip gain`, over five buses in `audio.json`. Emit `battle
 
 > The repo root also carries an `Audio/` folder of sourced `.mp3` files from an earlier direction.
 > Nothing references them and they are not part of the build - keep them as reference or delete them.
+
+## Checks
+
+Everything verifiable outside the engine, in one place. The engine can compile a script and
+report a clean console; it cannot tell you a shake is frame-rate dependent, a loop clicks, or
+a difficulty tier quietly grants a health bonus. These can.
+
+```sh
+node game/data/validate.js              # part/blueprint/socket consistency
+node game/data/build-bundle.js          # regenerate bundle.json after any data change
+node game/data/audio-check.js           # 9 synthesised clips: format, level, loop seams, spectrum
+node game/data/audio-wiring-check.mjs   # AudioDirector against a stubbed engine (22 checks)
+node game/data/camera-feel-check.mjs    # shake / hit-stop / knockout push (11 checks)
+node game/data/difficulty-check.mjs     # easy-normal-hard mapping, and that it never cheats (9 checks)
+```
+
+The `*-check.mjs` harnesses import the shipped script itself and `audio-check.js` extracts the
+synth block verbatim, so none of them can drift from what runs. All four have been
+mutation-tested — the checks are known to fail when the behaviour they describe is removed.
+
+## Playtesting
+
+`docs/PLAYTEST.md` is the session kit (facilitator script, match sheet, feedback form).
+`docs/BUGS.md` is the triaged bug list. Three week-7 tasks — the balance pass, the AI weight
+re-tune, and the top-5 feel fixes — are blocked on real sessions and deliberately not faked;
+see T-7.1/T-7.4/T-7.5/T-7.10 in `TASKS.md`.
+
+**Before any session, push the repo's `game/data/` into the engine project.** A stale but
+valid data file loads perfectly and plays slightly wrong, which produces a session that looks
+fine and is worthless (BB-001).
 
 ## Data validation
 

@@ -68,5 +68,33 @@
       "ram":            { "bias": -0.20, "weaponLost":  1.40, "proximity":  0.40, "foeHealth": -0.40 },
       "push-to-hazard": { "bias":  0.10, "foeHazard":  1.30, "proximity":  0.50, "alignment":  0.40 }
     }
+  },
+
+  "$difficultyNote": "T-7.8. Difficulty is a MODIFIER over `tuning`, not a fourth personality. Personality is who the bot is; difficulty is how well it plays. Keeping them orthogonal means 'aggressive on easy' still reads as aggressive rather than as a different character, and it stops the weight tables tripling and drifting apart. NOTHING HERE CHEATS: no health, damage, mass or speed advantage is handed to the AI on hard, because a bot that wins by having more hp teaches the player nothing and feels unfair the moment they notice. Every lever below changes the QUALITY OF THE AI'S DECISIONS - how fast it reacts, how precisely it commits, how well it respects a pit, and how often it simply picks the wrong thing.",
+  "difficulty": {
+    "easy": {
+      "$comment": "Sluggish and imprecise, and it misjudges roughly a third of its decisions. It still plays its personality — it is just worse at it. hazardRadiusScale below 1 means it respects pits later, so it will occasionally drive itself in, which is the single most forgiving mistake an opponent can make.",
+      "reactionScale": 2.2,
+      "alignToleranceScale": 2.0,
+      "hazardRadiusScale": 0.6,
+      "throttleScale": 0.72,
+      "mistakeChance": 0.35
+    },
+    "normal": {
+      "$comment": "The tuning file exactly as authored and as balanced in T-4.9. All scales 1, no mistakes. This is the baseline every other difficulty is expressed against, so it must stay a pure pass-through.",
+      "reactionScale": 1.0,
+      "alignToleranceScale": 1.0,
+      "hazardRadiusScale": 1.0,
+      "throttleScale": 1.0,
+      "mistakeChance": 0
+    },
+    "hard": {
+      "$comment": "Re-decides almost twice as often, commits only on a tighter line, and gives pits a wider berth than a human reliably manages. No mistakes. It is not faster or stronger than you — it is more disciplined.",
+      "reactionScale": 0.6,
+      "alignToleranceScale": 0.7,
+      "hazardRadiusScale": 1.25,
+      "throttleScale": 1.0,
+      "mistakeChance": 0
+    }
   }
 }

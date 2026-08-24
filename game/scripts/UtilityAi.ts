@@ -12,6 +12,7 @@
  *   role         this bot's role, e.g. "opponent"
  *   target       role to fight, default "player"
  *   personality  weight set from data/ai/weights.json, default "aggressive"
+ *   difficulty   modifier over `tuning` from the same file, default "normal" (T-7.8)
  *
  * WHY SCORING BEATS THE PRIORITY LIST
  *   `AiDriver` had to encode "attack unless too close unless stuck unless near a pit"
@@ -84,6 +85,23 @@ export default function create() {
   let weights = null;
   let tune = null;
   let personality = "aggressive";
+  let difficulty = "normal";
+  /** 0..1 chance a decision goes to the runner-up instead of the winner. (T-7.8) */
+  let mistakeChance = 0;
+  /** Scales the AI's own throttle. Never touches the bot's actual capability. */
+  let throttleScale = 1;
+  /**
+   * Deterministic. Nothing else in this codebase uses `Math.random` — the assembler
+   * is verified reproducible (T-2.11) and the balance runs in T-4.9 depend on a match
+   * replaying identically — so difficulty must not be the thing that introduces
+   * frame-dependent noise. Seeded per bot from its role and personality so the two
+   * sides of a match do not make the same mistakes at the same moments.
+   */
+  let rngState = 1;
+  function rnd() {
+    rngState = (Math.imul(rngState, 1664525) + 1013904223) >>> 0;
+    return rngState / 4294967296;
+  }
 
   let knockedOut = false;
   let offKo = null;
@@ -307,6 +325,20 @@ export default function create() {
     let best = scores[0];
     for (const s of scores) if (s.score > best.score) best = s;
 
+    // T-7.8 — an easy opponent misjudges. It picks the RUNNER-UP, never a random
+    // action: the second-best choice is still a defensible thing to do, so the bot
+    // reads as beatable rather than broken. Rolled only when the decision is
+    // actually open (see the dwell lock below), so one unlucky roll cannot stutter
+    // the bot for a whole second.
+    if (mistakeChance > 0 && scores.length > 1 && rnd() < mistakeChance) {
+      let second = null;
+      for (const s of scores) {
+        if (s === best) continue;
+        if (!second || s.score > second.score) second = s;
+      }
+      if (second) best = second;
+    }
+
     const incumbent = scores.find((s) => s.id === current);
     dwell += dt;
     const locked = dwell < tune.minDwellSeconds;
@@ -404,7 +436,44 @@ export default function create() {
         return;
       }
       const file = JSON.parse(raw.content.text);
-      tune = file.tuning;
+
+      // T-7.8 — difficulty scales a COPY of the tuning block. Mutating the parsed
+      // file in place would be invisible here and wrong the moment two bots in one
+      // match run at different difficulties.
+      difficulty = params.difficulty || "normal";
+      const diffs = file.difficulty || {};
+      let mod = diffs[difficulty];
+      if (!mod) {
+        if (difficulty !== "normal") {
+          engine.console.log("[AI] unknown difficulty '" + difficulty + "' — using normal");
+        }
+        difficulty = "normal";
+        mod = diffs.normal || {};
+      }
+      const scale = (k, by) => {
+        const f = typeof mod[by] === "number" ? mod[by] : 1;
+        if (typeof file.tuning[k] === "number") tune[k] = file.tuning[k] * f;
+      };
+      tune = {};
+      for (const k of Object.keys(file.tuning)) tune[k] = file.tuning[k];
+      // Reaction: how long it is locked into a choice, and how long before it can
+      // notice it is stuck. An easy bot is not blind, it is slow.
+      scale("minDwellSeconds", "reactionScale");
+      scale("stuckSeconds", "reactionScale");
+      scale("healthPollSeconds", "reactionScale");
+      // Precision: how close to on-target it must be before it commits.
+      scale("alignToleranceRad", "alignToleranceScale");
+      // Self-preservation: how early the pit veto starts arguing.
+      scale("hazardRadiusM", "hazardRadiusScale");
+      mistakeChance = typeof mod.mistakeChance === "number" ? mod.mistakeChance : 0;
+      throttleScale = typeof mod.throttleScale === "number" ? mod.throttleScale : 1;
+
+      let seed = 2166136261;
+      for (const ch of (role + "|" + personality + "|" + difficulty)) {
+        seed ^= ch.charCodeAt(0); seed = Math.imul(seed, 16777619);
+      }
+      rngState = seed >>> 0;
+
       weights = file.personalities[personality];
       if (!weights) {
         engine.console.log("[AI] unknown personality '" + personality + "' — falling back to aggressive");
@@ -435,7 +504,19 @@ export default function create() {
         if (p && p.entity === weaponEntity && p.state === "destroyed") weaponDestroyed = true;
       });
 
-      engine.console.log("[AI] " + role + " utility brain up (" + personality + ") — chassis "
+      // The EFFECTIVE tuning, not the tier name. During a playtest the only thing
+      // worth knowing is what this bot is actually running, and a tier name does not
+      // answer that once someone has edited the modifiers. It is also the only
+      // external evidence that the scaling ran at all — difficulty-check.mjs asserts
+      // these numbers rather than trusting that the code was reached.
+      engine.console.log("[AI] " + role + " effective tuning — dwell "
+        + (Math.round(tune.minDwellSeconds * 1000) / 1000) + "s, align "
+        + (Math.round(tune.alignToleranceRad * 1000) / 1000) + "rad, hazard "
+        + (Math.round(tune.hazardRadiusM * 1000) / 1000) + "m, throttle x"
+        + throttleScale + ", mistakes " + Math.round(mistakeChance * 100) + "%");
+
+      engine.console.log("[AI] " + role + " utility brain up (" + personality
+        + ", " + difficulty + ") — chassis "
         + chassis + ", target " + targetChassis + ", weapon " + (weaponEntity || "none"));
     },
 
@@ -494,6 +575,13 @@ export default function create() {
 
       const action = choose(state, dt);
       const intent = action.intent(state);
+      // T-7.8 — an easier bot drives less hard. This scales what the AI ASKS FOR,
+      // not what the bot can do: BotDrive's own multipliers come from the fitted
+      // motor (T-4.10) and are untouched, so an easy opponent is a worse driver of
+      // the same machine rather than a nerfed machine. `lastThrottle` takes the
+      // scaled value because the `stuck` consideration asks "I asked for throttle
+      // and did not move" — it has to mean what was actually requested.
+      if (throttleScale !== 1) intent.throttle *= throttleScale;
       lastThrottle = intent.throttle;
       commandWeapon(call, action.spin);
       publishIntent(call, intent, action.id);

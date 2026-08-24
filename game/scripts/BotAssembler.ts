@@ -280,8 +280,14 @@ function assemble(engine, blueprintId, role, pose) {
   // `call` here threw a ReferenceError that the catch below swallowed, so versus
   // silently never engaged and the opponent stayed an AI.
   let twoPlayer = false;
+  let difficulty = "normal";
   try {
-    twoPlayer = JSON.parse(readFile({ path: "/data/session.json" }).content.text).players === 2;
+    const sess = JSON.parse(readFile({ path: "/data/session.json" }).content.text);
+    twoPlayer = sess.players === 2;
+    // T-7.8 — difficulty rides the session the same way the player count does, so
+    // the options panel sets it once and every brain assembled afterwards picks it
+    // up. Absent means normal, which is what an untouched install should play like.
+    if (typeof sess.difficulty === "string") difficulty = sess.difficulty;
   } catch (err) {
     twoPlayer = false;   // no session file yet — single player
   }
@@ -327,7 +333,8 @@ function assemble(engine, blueprintId, role, pose) {
     // A blueprint can name its own temperament, so a bot's character is data rather
     // than a branch here; AiDriver remains in the repo as the scripted baseline.
     attach({ entity: brain, behavior: "UtilityAi", enabled: true,
-      params: { role, target: "player", personality: blueprint.aiPersonality || "aggressive" } });
+      params: { role, target: "player", personality: blueprint.aiPersonality || "aggressive",
+        difficulty } });
   }
 
   const cls = (bundle.weightClasses.classes || []).find((c) => totalMass <= c.maxMassKg);

@@ -273,13 +273,39 @@ Derived from `Battle_Bots_Project_Proposal (1).docx`. Every task is written to b
   - **Deferred (2026-08-19).** Authored `paint` is already in the `BotBlueprint` schema and survives save/load; only player-chosen paint is out.
 
 ### 4.4 Art pipeline (runs in parallel from week 2)
-- [ ] **T-4.16** Model the chassis variants in Blender; export glTF; import via `assets_import`.
-- [ ] **T-4.17** Model wheels, all four weapon types, and armor plates.
-- [ ] **T-4.18** Model workshop props and arena set dressing.
-- [ ] **T-4.19** Texture the parts (Substance Painter or Blender texture paint) with a paint-maskable channel so recoloring works.
-- [ ] **T-4.20** Author collision proxies: convex hulls or `Collider.extraShapes` decomposition (`mesh_decomposeCollision`) — never trimesh colliders on dynamic bodies.
-- [ ] **T-4.21** Generate LODs for the heaviest meshes (`mesh_generateLOD`) if T-1.17 showed a budget problem.
-- [ ] **T-4.22** Establish the naming convention for meshes/materials/prefabs and document it.
+
+> **Descoped 2026-08-24, by decision: the greybox IS the art direction.** Not a deferral and not a
+> placeholder anyone intends to replace — untextured primitives are what ships. Recorded here so it
+> is never re-litigated as "art still to do", and so the several tasks written *against* an art
+> pipeline can be closed honestly rather than left hanging.
+>
+> This also **retires risk R6** (art volume sinks a solo week 4) by removing the thing that caused
+> it, and it lets T-7.6 close: draw-call cutting was deferred there on the grounds that the geometry
+> was a placeholder, and that premise no longer holds.
+>
+> What the decision costs: the wear/scratch overlay (T-4.13) and the paint-maskable channel (T-4.19)
+> were the two places art was going to carry information, so damage state has to read entirely
+> through colour swaps and VFX. It already does — T-3.5 swaps material colour at `damaged`, and
+> `VfxDirector` puts smoke on a damaged part and fire on a dead motor.
+
+- [>] **T-4.16** Model the chassis variants in Blender; export glTF; import via `assets_import`.
+- [>] **T-4.17** Model wheels, all four weapon types, and armor plates.
+- [>] **T-4.18** Model workshop props and arena set dressing.
+- [>] **T-4.19** Texture the parts (Substance Painter or Blender texture paint) with a paint-maskable channel so recoloring works.
+  - All four descoped together — they are one body of work and there is no half of it worth doing. The four weapon archetypes already read as distinct at a glance from silhouette alone (a horizontal bar, a vertical drum, a raised axe, a wedge), which was the only thing the modelling had to buy that gameplay depends on.
+
+- [-] **T-4.20** Author collision proxies: convex hulls or `Collider.extraShapes` decomposition (`mesh_decomposeCollision`) — never trimesh colliders on dynamic bodies.
+  - **Superseded by the descope, and satisfied by construction.** This task existed to stop imported art becoming trimesh colliders on dynamic bodies. With no imported meshes, every collider in the game is already an authored primitive — box, cylinder or sphere — which is the outcome it was protecting. Nothing to author.
+
+- [-] **T-4.21** Generate LODs for the heaviest meshes (`mesh_generateLOD`) if T-1.17 showed a budget problem.
+  - **Superseded — the condition it was gated on never fired.** It reads "if T-1.17 showed a budget problem"; T-1.17 did not, and T-7.6 since measured a full two-bot match with destruction, VFX, HUD and hazards at **0.298–0.400 ms/frame against 16.67 ms**. There are also no heavy meshes to generate LODs from.
+
+- [x] **T-4.22** Establish the naming convention for meshes/materials/prefabs and document it.
+  - Done by writing down what is already in force, rather than inventing a scheme for assets that will not exist. There are no meshes or named materials — greybox renders through `MeshRenderer.primitive` and a colour — so the convention that matters is over **part ids, scene entities and runtime entities**. Recorded in `README.md`:
+  - **Part ids** `<category>-<variant>-<size|kind>`: `ch-` chassis, `wh-` wheel, `wp-` weapon, `ar-` armor, `mt-` motor. Size suffix `-l/-m/-h` (light/medium/heavy) for chassis, wheels and armor; kind suffix for weapons — `-h` horizontal bar, `-v` vertical drum, `-a` axe, `-p` passive.
+  - **Scene entities** PascalCase for singletons (`MatchCamera`, `DamageSystem`, `AudioDirector`), `Group_Part` for arena geometry (`Floor_Center`, `Wall_North`, `Pit_NW`), and a `Visual` suffix for a render-only child of a physics body (`Hazard_SpinnerWVisual`).
+  - **Runtime entities** built by `BotAssembler`: `Bot_<role>_Chassis` and `Bot_<role>_<socket>_<partId>`. Spawn markers carry their arguments in the name — `BotSpawn:<blueprint>:<role>`.
+  - **Audio** clips register as `bb_<name>`; voices are `AudioVoice_<n>`, beds `AudioBed_<Name>`.
 
 ---
 
@@ -524,22 +550,58 @@ Derived from `Battle_Bots_Project_Proposal (1).docx`. Every task is written to b
 
 ## 7. Week 7 — Polish & Playtesting
 
-- [ ] **T-7.1** Run structured playtests (≥5 testers) with a written script and a feedback form.
-- [ ] **T-7.2** Log every bug into a triaged list (blocker / major / minor / polish).
+- [~] **T-7.1** Run structured playtests (≥5 testers) with a written script and a feedback form.
+  - **The kit is written; the sessions are not run.** `docs/PLAYTEST.md` has the facilitator script (cold open with no instructions, guided practice, three recorded matches, a blind easy/hard comparison, debrief), a match record sheet, and a 12-question feedback form. It is built backwards from the three tasks that are blocked on it, so a session produces matchup rows for T-7.4, labelled telemetry for T-7.5, and a ranked complaint list for T-7.10 — rather than a pile of opinions.
+  - **This is the gate for the rest of week 7 and it needs five humans.** Nothing an agent can do substitutes for it.
+
+- [~] **T-7.2** Log every bug into a triaged list (blocker / major / minor / polish).
+  - `docs/BUGS.md`, triaged blocker / major / minor / polish / needs-repro, with engine defects kept out of it (they live in `engine-fixes.md`). **Seeded, not populated** — 7 entries, all found by engineering rather than by play, because the sessions that produce the real list have not happened. No blockers or majors open.
+  - **The one that mattered: BB-001.** The engine project was running `hazardRadiusM: 2.4` — the value T-4.9 *replaced* with 4.0 after finding 8 of 15 matchups ending in a pit. The repo was right; the working copy was stale, and a stale-but-valid JSON loads perfectly and just plays wrong. Every balance observation made against that project was measured on tuning nobody approved. Pushed the correct file; the structural fix (a check that compares project data against the repo) is still open and is worth doing **before** the playtests, since a stale-data session produces data that looks fine and is worthless.
+
 - [ ] **T-7.3** Fix all blockers and majors.
+  - Nothing to do yet, honestly rather than vacuously: `docs/BUGS.md` has no blockers or majors open, and the list that would contain them comes out of T-7.1.
+
 - [ ] **T-7.4** Balance pass on weapons, armor, and weight classes using playtest matchup data.
-- [ ] **T-7.5** Re-tune AI weights with the freshly recorded telemetry — the "shaped by real players" claim rests on this, so do it with real data, not by hand.
+  - Blocked on T-7.1 by definition — it asks for *playtest* matchup data. The AI-vs-AI round robin already ran in T-4.9 and is not a substitute; the whole point of a second pass is to see what happens when a human is making the decisions.
+
+- [>] **T-7.5** Re-tune AI weights with the freshly recorded telemetry — the "shaped by real players" claim rests on this, so do it with real data, not by hand.
+  - **Blocked, and deliberately not faked.** There are 33 telemetry files and the tooling to aggregate them (`game/data/ai/aggregate.js`, T-5.19), so this *looks* ready. It is not. Classifying all 6,590 samples by what the player bot was actually doing:
+
+    | What the recording actually is | Matches |
+    |---|---|
+    | Player bot driven by a human | **2** |
+    | AI vs AI self-play | 18 |
+    | Versus mode with nobody at the keyboard — a parked, idle bot | 13 |
+
+  - Only **217 of 3,295 player samples (6.6 %)** contain any input at all, and they are concentrated in those two files. Retuning the weights on this would tune the AI against a stationary dummy and its own reflection, and then report it as *shaped by real players* — which is precisely the claim this task exists to protect. The task itself says "with real data, not by hand"; the honest reading is that it also means "not with data that merely exists".
+  - Deferred until T-7.1 produces human telemetry. `docs/PLAYTEST.md` labels each session's recordings so they can be told apart from this batch.
 - [x] **T-7.6** Performance optimization: profile with `profiler_getFrameStats`, cut draw calls, cap debris, tune shadows (`renderer_setShadowConfig`).
   - **Profiled, and there is nothing to optimize yet.** A complete 130 s Arena01 match with everything on — two bots, four-weapon actuation, destruction, VFX, HUD, telemetry, hazards, post-FX, 94 entities — costs **0.298–0.400 ms per frame (median 0.362)** against a 16.67 ms budget. That is ~2 % of frame, and 60 fps was held throughout.
   - Measured by timing `stepFrames` over ten 780-frame runs, which is a direct read on main-thread cost; the reported `frameTimeMs` of 16.68 is just the vsync cap and says nothing about headroom.
   - Debris is already capped (T-5.3: 8 pieces or 12 s, plus instant deletion below the pit since T-5.12). Shadows are `pcfsoft` at 1024 — left alone, because cutting them would buy frames that are not needed and cost the only depth cue a greybox arena has.
-  - **Cutting draw calls is deferred on purpose**, not skipped: the scene is greybox primitives, so the draw-call count is a property of art that does not exist yet (T-4.16 – T-4.18). Optimizing it now would be optimizing a placeholder. Re-profile when meshes land.
+  - ~~**Cutting draw calls is deferred on purpose**, not skipped: the scene is greybox primitives, so the draw-call count is a property of art that does not exist yet (T-4.16 – T-4.18). Optimizing it now would be optimizing a placeholder. Re-profile when meshes land.~~
+  - **Closed 2026-08-24.** The art was descoped (§4.4), so the greybox primitives *are* the final geometry and this draw-call count is the shipping one — at ~2 % of frame budget there is nothing to cut. The deferral is resolved by the premise disappearing, not by the work being done.
 - [x] **T-7.7** Check `profiler_getErrors` / `profiler_getLogs` for a clean console across a full match.
   - **0 errors** across a full 130 s match, and `scene.validate` clean (0 errors, 0 warnings) at the end. **(V)**
   - **1 warning**, and it is not ours: `THREE.WebGLProgram` reporting X3595/X4000 from compiling the **FXAA** post-FX shader on the D3D backend. It is a shader-compiler diagnostic from three.js, fires once at program build, and is the direct cost of enabling FXAA in T-5.13. Recorded rather than suppressed so it is not rediscovered in week 8.
-- [ ] **T-7.8** Difficulty tuning: an easy/normal/hard mapping over the AI weight sets.
-- [ ] **T-7.9** Game-feel polish: camera shake on big hits, hit pause, slow-mo on knockout.
+- [x] **T-7.8** Difficulty tuning: an easy/normal/hard mapping over the AI weight sets.
+  - **Difficulty is a modifier over `tuning`, not a fourth personality.** Personality is who the bot is; difficulty is how well it plays. Keeping them orthogonal means "aggressive on easy" still reads as aggressive rather than as a different character, and it stops three weight tables becoming nine and drifting apart. Every pairing of 3 personalities × 3 tiers is asserted to boot.
+  - **Nothing cheats.** No tier touches health, damage, mass or the drivetrain — a bot that wins by having more hp teaches the player nothing and feels unfair the moment they notice. The levers are all decision quality: reaction time (`minDwellSeconds`, `stuckSeconds`, `healthPollSeconds`), commitment precision (`alignToleranceRad`), self-preservation (`hazardRadiusM`, so an easy bot respects pits later and occasionally drives into one), throttle, and an outright mistake rate. `difficulty-check.mjs` enforces this with a deliberately broad pattern that would catch a future well-meaning `healthScale`.
+  - **Mistakes take the runner-up, never a random action.** The second-best choice is still a defensible thing to do, so an easy bot reads as beatable rather than broken.
+  - **Deterministic.** Nothing else in this codebase uses `Math.random` — the assembler is verified reproducible (T-2.11) and T-4.9's balance runs depend on a match replaying identically — so the mistake roll is a seeded LCG, seeded per bot from role + personality + tier so the two sides never err in lockstep.
+  - `normal` is a pure pass-through of the tuning T-4.9 balanced, asserted rather than assumed. Difficulty rides `session.json` the same way the player count does, so the options panel sets it once and every brain assembled afterwards picks it up.
+  - **Measured live**, both tiers on the same bot: `normal` → `dwell 0.45s, align 0.3rad, hazard 4m, throttle x1, mistakes 0%`; `easy` → `dwell 0.99s, align 0.6rad, hazard 2.4m, throttle x0.72, mistakes 35%`. Published throttle came out at exactly `0.1 × 0.72 = 0.072` and `0.6 × 0.72 = 0.432`.
+  - **(V)** `node game/data/difficulty-check.mjs` — 9 checks, mutation-tested. One of them exists *because* of a mutation: giving `hard` a `healthScale` was caught, but deleting the code that applies the scaling was **not**, since every assertion until then only read the JSON. The brain now logs its effective tuning — useful in a playtest console in its own right — and the check asserts those numbers. The one lever applied on the update hook (`throttleScale`) is still outside that harness's reach and is verified in the live engine instead; the gap is written into the file rather than papered over.
+
+- [x] **T-7.9** Game-feel polish: camera shake on big hits, hit pause, slow-mo on knockout.
+  - All of it lives in `MatchCamera.ts`, because the camera is the only thing that can react to a hit **without changing its outcome**. Every effect is position-only, so the file's existing rule holds: the authored rotation is never written, and none of this can alter a match.
+  - **Shake** is trauma-based. A hit adds trauma scaled by force; trauma decays linearly and displacement is trauma *squared*, so a big hit lands hard and leaves quickly while a tap does nothing. Losing a part outranks any single hit. Displacement is three sine waves at unrelated frequencies rather than per-frame randomness — it reads as the camera being shoved instead of as a bad video signal, and it is frame-rate independent for free.
+  - **Hit stop** freezes *tracking*, not the simulation: for ~80 ms the camera stops chasing and only shakes, so the view goes rigid against a world that keeps moving. Freezing the simulation would change physics outcomes, which is a gameplay change wearing polish's clothes.
+  - **Slow-mo on knockout is not possible and is not claimed.** The engine has no time scale (`engine-fixes.md` LIM-008): `engine.clock.stepSeconds` looks like one and is a fidelity knob — measured 61 steps/s at 1/60 and 120 steps/s at 1/120, both advancing 1.0 s of sim per wall second. `game.pause` is a full stop with its own event; `editor.setRunning` + `stepFrames` would work in the editor and not in a build. Shipped a slow cinematic push-in instead, which gives the ending a beat, and called it what it is. Logged as BB-003 to reopen if a `timeScale` ever lands.
+  - **(V)** `node game/data/camera-feel-check.mjs` — 11 checks, mutation-tested. The one worth having is **frame-rate independence**: the same elapsed time at 30, 60 and 144 Hz must produce the same displacement, and swapping the sine noise for `Math.random` fails it immediately. That is the bug nobody catches by looking, because it only shows up on someone else's monitor.
+
 - [ ] **T-7.10** Fix the top-5 "feels bad" items testers named, whether or not they're bugs.
+  - Blocked on T-7.1, and the wording is the point: *testers named*. `docs/PLAYTEST.md` ranks complaints by how many testers hit them rather than by how bad they sounded, because one strong opinion is one person and three people hitting the same wall is a design problem.
 
 ---
 
@@ -581,7 +643,7 @@ Derived from `Battle_Bots_Project_Proposal (1).docx`. Every task is written to b
 | R3 | Match reset doesn't cleanly restore broken joints | Can't play twice | Verify reload semantics in week 1, not week 5 | T-1.15, T-5.8 |
 | R4 | Two-device local input unproven | Cuts a core pitch feature | Spike the input layer in week 2, not week 6 | T-6.6 |
 | R5 | No telemetry recorded before week 5 | AI tuning has no data; the "real player data" claim fails | Land recording by week 3 | T-5.14 |
-| R6 | Art volume for 4 weapons + parts + 2 scenes, solo | Week 4 slips | Ship greybox-playable; art is a parallel track, never a blocker | T-4.16–T-4.22 |
+| ~~R6~~ | ~~Art volume for 4 weapons + parts + 2 scenes, solo~~ | — | **Retired 2026-08-24:** the mitigation became the decision — greybox ships as the art direction, so there is no art track left to slip. | T-4.16–T-4.22 |
 | ~~R7~~ | ~~Build system scope creeps toward freeform~~ | — | **Retired 2026-08-19:** the player-facing build system is cut entirely (`DESIGN.md` §0), so there is no longer a builder whose scope can creep. The socket model it would have crept from is now internal-only. | T-2.3, T-2.4 |
 | R8 | Docker rebuild loop slows iteration (no in-container HMR) | Death by a thousand rebuilds | Do gameplay work through scripting + `script_hotReload`; rebuild images only for engine-package changes | T-0.1, T-0.2 |
 
