@@ -144,15 +144,20 @@ in, no host mount and no network at runtime. The recipient needs Docker and noth
 node tools/package-game.mjs --save      # rebuild-check, build image, write a .tar
 ```
 
-That produces `build/battle-bots-image.tar` (~27 MB). Send it along with
-[deploy/README.md](deploy/README.md), which is written for someone who has never seen this repo
-and covers controls, how to play, and the two behaviours that look like bugs and are not
-(background tabs suspend the game; audio needs one click first). They run:
+That produces `build/battle-bots-image.tar` (~27 MB). Publish it as a **GitHub Release asset**
+under the tag the launchers expect:
 
 ```sh
-docker load -i battle-bots-image.tar
-docker run --rm -p 4300:8080 battle-bots:latest
+gh release create v0.9.0 build/battle-bots-image.tar   --title "Battle Bots v0.9.0" --notes "Playable build. See deploy/README.md."
 ```
+
+After that, anyone with the repo (or just the `deploy/` folder) can **double-click
+`Play-Battle-Bots.cmd`** on Windows, or run `./play-battle-bots.sh` on macOS/Linux. The script
+checks Docker, downloads the image on first run, starts it and opens a browser — no repo build,
+no manual `docker` commands.
+
+[deploy/README.md](deploy/README.md) is written for that person: controls, how to play, and the
+two behaviours that look like bugs and are not.
 
 `package-game.mjs` **refuses to package a stale or unshimmed build** — it compares the build's
 mtime against every source under `game/` and checks `player.js` carries the shim marker. Passing

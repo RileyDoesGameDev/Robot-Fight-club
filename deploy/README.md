@@ -3,37 +3,54 @@
 A physics-based robot combat game. Pick a bot, fight it in an arena with corner pits and floor
 spinners, and try to tear the other one apart.
 
-You need **Docker** and nothing else. No Node, no game engine, no source checkout.
+You need **Docker Desktop** and nothing else. No Node, no game engine, no source checkout.
 
 ---
 
-## If you were sent a `.tar` file
+## Just play it
+
+**Windows** — double-click **`Play-Battle-Bots.cmd`**.
+**macOS / Linux** — `chmod +x play-battle-bots.sh && ./play-battle-bots.sh`
+
+That is the whole thing. The script checks Docker is running, fetches the game if it does not
+already have it (~27 MB, once), starts it, and opens your browser at
+**<http://localhost:4300>**.
+
+To stop: double-click **`Stop-Battle-Bots.cmd`**, or `docker rm -f battle-bots`.
+
+Starting it again is instant — the download only happens the first time.
+
+### If it says Docker is not running
+
+That is the most common one. Docker Desktop has to be *started*, not merely installed: launch
+it, wait for the whale icon to stop animating, then run the script again.
+
+### A different port
+
+Something else on 4300? Windows: open the `.cmd` in Notepad and change the `PORT=4300` line
+near the top. macOS/Linux: `PORT=8080 ./play-battle-bots.sh`.
+
+---
+
+## Doing it by hand
+
+The scripts are a convenience, not a requirement.
 
 ```sh
-docker load -i battle-bots-image.tar
+docker load -i battle-bots-image.tar          # if you were sent the .tar
 docker run --rm -p 4300:8080 battle-bots:latest
 ```
 
-Then open **<http://localhost:4300>**.
-
-That's it. `--rm` means the container deletes itself when you stop it (Ctrl-C).
-
-## If you have the repo
+Or, from a checkout of the repo with a build present:
 
 ```sh
 docker compose -f deploy/docker-compose.yml up -d
 ```
 
-Open <http://localhost:4300>. Stop it with `docker compose -f deploy/docker-compose.yml down`.
-
-### A different port
-
-The game does not care what port it is on:
-
-```sh
-docker run --rm -p 8080:8080 battle-bots:latest      # then localhost:8080
-PORT=8080 docker compose -f deploy/docker-compose.yml up -d
-```
+> **Note for anyone who cloned the repo:** `docker compose up --build` will **fail**. The game
+> artifacts live in `build/`, which is deliberately not in git — it is 9 MB of generated output
+> including a vendored engine. Building from source needs the engine editor running locally.
+> Use the launcher script or the `.tar`; both work from a bare clone.
 
 ---
 

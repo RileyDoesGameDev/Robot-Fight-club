@@ -43,3 +43,6 @@ game/data/history.json
 game/data/session.json
 game/data/return-to.json
 build/battle-bots-image.tar
+
+# The shareable image lives on a GitHub Release, never in git (27 MB binary).
+deploy/*.tar
