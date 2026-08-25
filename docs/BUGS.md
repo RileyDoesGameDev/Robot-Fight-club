@@ -53,7 +53,7 @@ chassis body, and the hazard visuals were merged into their bodies in `Arena01` 
 `DemoCenter`. Safe because colliders ignore `Transform.scale` (BUG-010), so a body can carry a
 non-uniform visual scale without deforming its collider.
 
-### BB-011 — there is no sound, and there cannot be · **open, not fixable in-game**
+### BB-011 — there is no sound · **fixed in-game**
 
 Reported from play, and correcting something recorded optimistically earlier: the engine's
 `audio.*` backend never decodes or plays anything, in the **deployed runtime as well as** the
@@ -64,11 +64,25 @@ Everything T-6.16 – T-6.20 built is correct and inert: nine synthesised clips,
 per-voice pitch driven by rpm and road speed, an adaptive crowd bed, a spatial listener on the
 camera. All verified by state, none of it audible.
 
-Two ways out, and they are quite different in kind:
-- The engine grows a real audio backend, and everything already written starts working.
-- The game stops using `audio.*` and drives WebAudio itself from `AudioDirector` — it already
-  synthesises the PCM and already computes every gain and pitch, so it has everything it needs.
-  That is a real feature to build, not a workaround, and it means owning spatialisation.
+**Fixed by taking the second route: `AudioDirector` drives WebAudio itself.** The synth already
+produced float samples, so they go straight into an `AudioBuffer` with no WAV round trip; buses
+are real `GainNode`s, spatial voices get a `PannerNode` that follows the bot, and the listener
+tracks the match camera.
+
+**Measured at the destination** in the deployed build with an analyser spliced in front of it:
+context `running`, 5 sources started, steady peak **0.083** / RMS **0.026** from the motor and
+crowd beds, rising to **0.123** when an impact fires. That is signal, not state.
+
+Two implementation bugs found and fixed while proving it:
+- The AudioContext was created per director, so it was **closed and rebuilt on every scene
+  change** — and a fresh context starts suspended. Audio would have worked on the menu and been
+  silent for the rest of the session. Context, buses and buffers are now module scope, shared by
+  every scene; only the live voices are per-scene.
+- The gesture handler unhooked itself on the first input **whether or not `resume()` took**. A
+  click during page load would have left the game permanently silent with no way back. It now
+  stays armed until the context is genuinely `running`.
+
+The engine limitation is unchanged (LIM-006) — this routes around it.
 
 
 

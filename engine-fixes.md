@@ -31,7 +31,7 @@ every file touched. The three Docker containers report `healthy`.
 | LIM-001 | 🟡 | No per-instance script parameters | Fixed — `Script.params` |
 | LIM-005 | 🟡 | Cylinder axis disagreement | Fixed — documented + `scene.validate` check |
 | LIM-003 | 🟡 | Editor viewport ignores scene lighting | 🔬 Premise corrected — see below |
-| LIM-006 | 🔴 | `audio.*` never decodes or plays, in ANY profile | ⬜ Open — the game has no sound |
+| LIM-006 | 🔴 | `audio.*` never decodes or plays, in ANY profile | ⬜ Open — **routed around**: the game drives WebAudio itself |
 | LIM-010 | 🔴 | The renderer does not fold parent transforms | ⬜ Open — worked around in-game |
 | LIM-008 | 🟡 | No time scale anywhere in the engine | ⬜ Open — blocks slow-motion |
 | LIM-009 | 🔴 | A deployed build cannot run a project-backed game | ⬜ Open — **blocks T-8.2**, shimmed |
@@ -333,6 +333,14 @@ Battle Bots routed everything through a spawner marker, so what remains is the g
 *library* code rather than indirection.
 
 ### LIM-006 — `audio.*` never decodes or plays anything, in any profile
+
+> **Routed around 2026-08-25, not fixed.** `AudioDirector` now drives WebAudio directly and the
+> game makes sound. That does not close this: the engine's audio API is still a surface that
+> records intent for a backend that does not exist, and every other project on this engine will
+> hit it. The game keeps calling `audio.*` alongside, because it is the declarative state of
+> record and is what a real backend would honour — **if one ever ships, one of the two paths has
+> to be deleted or every sound plays twice.**
+
 
 **Corrected 2026-08-24.** This was first filed against the *editor* profile, on the assumption
 that a deployed runtime would honour the AudioSource state the editor merely records. It does

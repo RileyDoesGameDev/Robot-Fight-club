@@ -185,6 +185,20 @@ Naming, as it is actually in force:
 
 ## Audio
 
+**The game makes sound**, but not through the engine. The engine's `audio.*` API records
+AudioSource state and never decodes or plays anything, in the editor and in a deployed build
+alike (`engine-fixes.md` LIM-006) — so `AudioDirector` drives **WebAudio** itself: the
+synthesised float samples go straight into an `AudioBuffer`, buses are real `GainNode`s,
+spatial voices get a `PannerNode` that follows the bot, and the listener tracks the match
+camera. The engine calls are kept alongside as the declarative state of record.
+
+> If the engine ever grows a working audio backend, **delete one of the two paths** or every
+> sound will play twice.
+
+Missing coverage — sounds the game already fires an event for and has no clip for — is listed
+in [docs/AUDIO-GAPS.md](docs/AUDIO-GAPS.md).
+
+
 Every sound is **synthesised at load** from `game/data/audio.json` by `game/scripts/AudioDirector.ts`.
 There is no audio file in the build: nine clips (motor, blade, impact, spark, detach, crowd, sting,
 knockout, click) are rendered to 16-bit PCM WAV in-script and registered with `audio.loadClip`. The
@@ -257,7 +271,7 @@ Honest list. Detail and repro in [docs/BUGS.md](docs/BUGS.md); engine-side cause
 
 | | Issue |
 |---|---|
-| 🔴 | **There is no sound.** Nine clips are synthesised, mixed across five buses, pitched by rpm and road speed, and spatialised on the camera — and the engine has no audio backend in *any* profile, so none of it is audible. Everything is built and inert (BB-011 / LIM-006). |
+| 🟡 | **Audio routes around the engine.** The engine has no audio backend in *any* profile (LIM-006), so `AudioDirector` drives WebAudio directly and the game does make sound. The engine's `audio.*` calls are kept as the state of record — if a real backend ever ships, one of the two paths must be deleted or every sound doubles. Coverage gaps in [docs/AUDIO-GAPS.md](docs/AUDIO-GAPS.md). |
 | 🔴 | **A stock `build.export` cannot run this game.** The deployed player is an older engine than the editor: no project filesystem, no `ctx.call`, and `script.attach` drops `params`. `tools/shim-build.js` patches the artifact back into a working state (BB-008 / LIM-009). |
 | 🟠 | **No slow motion on a knockout.** The engine has no time scale at all; the knockout gets a cinematic camera push-in instead (BB-003 / LIM-008). |
 | 🟠 | **No playtests have been run.** Five week-7 and week-8 tasks are blocked on real testers, and are deliberately not faked — including the AI weight re-tune, which would otherwise be tuned against a parked dummy (T-7.1, T-7.4, T-7.5, T-7.10). |

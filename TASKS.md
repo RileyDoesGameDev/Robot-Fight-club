@@ -553,6 +553,26 @@ Derived from `Battle_Bots_Project_Proposal (1).docx`. Every task is written to b
 > verify audio, and every check below is deliberately run *outside* it.
 > **LIM-007** - `audio.loadClip` is the only async tool in the namespace, so it cannot go through
 > the synchronous `ctx.call` path every other script uses.
+>
+> **2026-08-25 - the game now makes sound.** Everything below was built correct and inert for a
+> backend that does not exist. `AudioDirector` drives **WebAudio directly**: the synth's float
+> samples go straight into an `AudioBuffer` (no WAV round trip), buses are real `GainNode`s,
+> spatial voices get a `PannerNode` that follows the bot, and the listener tracks the match
+> camera. The engine's `audio.*` calls are kept alongside as the declarative state of record -
+> if a real backend ever ships, **one of the two paths must be deleted or every sound doubles.**
+> Measured in the deployed build with an analyser spliced in front of the destination: steady
+> peak 0.083 / RMS 0.026 from the motor and crowd beds, rising to 0.123 on an impact. Signal,
+> not state.
+>
+> Two bugs found while proving it, both invisible to inspection: the AudioContext was created
+> per director, so it was closed and rebuilt on every scene change - and a fresh context starts
+> *suspended*, so audio would have worked on the menu and been silent for the rest of the
+> session. And the gesture handler unhooked itself on the first input whether or not `resume()`
+> took, so a click during page load would have silenced the game permanently with no way back.
+>
+> **Coverage gaps: `docs/AUDIO-GAPS.md`** - eight sounds the game already fires an event for and
+> has no clip for, led by `battlebots.weaponSwing`, the only event in the entire game with no
+> listener at all.
 
 - [x] **T-6.16** Source/create the audio set: motor loops, weapon spin, metal impacts, sparks, part detachment, crowd, announcer stings, UI clicks.
   - **Decision:** nothing is sourced - all nine clips are **synthesised at load** as 16-bit PCM WAV from `data/audio.json`. Untextured waveforms match untextured greybox primitives, the build carries no audio file at all, and the whole mix retunes without a recompile. Four kinds cover it: `saw` (motor, blade), `noise` (spark, crowd, click), `clank` (impact, detach), `sweep` (sting, ko).
@@ -585,7 +605,10 @@ Derived from `Battle_Bots_Project_Proposal (1).docx`. Every task is written to b
   - `node game/data/audio-wiring-check.mjs` - **22 checks** driving the real `AudioDirector` against a stubbed engine that models the awkward parts (attach resets `playing`; async `loadClip`; unregistered clips rejected).
   - Both harnesses were **mutation-tested**: removing pitch quantisation, the impact cooldown, the motor re-play, or the clip prefix each fails the specific check that covers it. One assertion was found passing *vacuously* (two redundant clamps guard the 0..1 mix invariant, so neither alone could fail it) and was rewritten against the property rather than either clamp.
 
-- [~] **T-6.21** **Feature-complete gate:** full loop, four weapons, destruction, AI opponent, local multiplayer, UI, and audio all in one build. **(V)**
+- [x] **T-6.21** **Feature-complete gate:** full loop, four weapons, destruction, AI opponent, local multiplayer, UI, and audio all in one build. **(V)**
+  - **Passed 2026-08-25.** Everything on the list runs together in one deployed build at `http://localhost:4300`: menu -> bot select -> arena, four weapon archetypes (six counting the passive wedge and the no-weapon case), destruction with shearing and debris, the utility AI with three personalities and three difficulty tiers, both local-multiplayer seat paths, the full HUD - **and audio that is actually audible.**
+  - The last blocker was the audio, and it was not a gate technicality: the engine has no audio backend in any profile (LIM-006), so every clip was correct and inert. `AudioDirector` now drives WebAudio directly. Verified by **measurement rather than inspection** - an analyser spliced in front of the destination in the deployed build read a steady peak of 0.083 from the motor and crowd beds, rising to 0.123 on an impact.
+  - Two caveats recorded rather than buried: this passes on a **shimmed** build (T-8.2 / LIM-009), and the audio path is the game routing *around* the engine rather than through it.
   - Every *feature* on this list now exists and runs together in `Arena01` with a clean console. What is **not** yet done is the "in one build" half: T-8.2 (`build_export`, then run it from `:4173`) has not been attempted, and the audio has never been **heard** - LIM-006 means the editor cannot play it, so the runtime build is the first chance to confirm it is audible rather than merely correct. Leaving this open until then; it is a gate, and calling it passed on a build nobody has run would be exactly the kind of claim it exists to prevent.
 
 ---

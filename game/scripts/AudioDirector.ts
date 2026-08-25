@@ -257,6 +257,176 @@ function buildWav(name, spec, sampleRate) {
 
 /* -------------------------------------------------------------------- SYNTH:END */
 
+/* ── WebAudio output ─────────────────────────────────────────────────────────
+ *
+ * The engine's `audio.*` surface records AudioSource state and never makes a sound —
+ * in the editor and in a deployed build alike (engine-fixes.md LIM-006). So this
+ * director drives WebAudio itself, and the engine calls are kept for what they are
+ * genuinely good for: they are the declarative state of record, they are what a real
+ * backend would honour if one ever ships, and they are what `audio-wiring-check.mjs`
+ * asserts against. Every gain and pitch below is the same number handed to the
+ * engine, computed once, so the two paths cannot disagree.
+ *
+ * If the engine ever grows a working backend, delete one of the two. Two live outputs
+ * would double every sound.
+ *
+ * WHY THIS IS MODULE SCOPE AND NOT PER-INSTANCE
+ *   There is one AudioDirector per scene, and scenes change constantly — menu, select,
+ *   arena, post-match. An AudioContext owned by the director would be closed and
+ *   rebuilt on every one of those transitions, and a fresh context starts SUSPENDED:
+ *   the browser only resumes one on a user gesture, so audio would work on the first
+ *   screen and be silent for the rest of the session. The context, the bus graph and
+ *   the decoded buffers therefore live here, shared by every instance and built once.
+ *   Only the live voices are per-instance, because those really do belong to a scene.
+ */
+let actx = null;
+let masterGain = null;
+const busGain = new Map();          // bus name -> GainNode
+const buffers = new Map();          // clip name -> AudioBuffer
+let gestureHooked = false;
+
+/**
+ * Build the graph: source -> [panner] -> voice gain -> bus gain -> master -> out.
+ *
+ * Buses are real nodes rather than arithmetic so a bus mute is genuinely instant
+ * instead of waiting for every live voice to notice on its next update.
+ */
+function waInit(engine, busNames) {
+  if (actx) return true;
+  const Ctx = (typeof globalThis !== "undefined")
+    && (globalThis.AudioContext || globalThis.webkitAudioContext);
+  if (!Ctx) return false;
+  try {
+    actx = new Ctx();
+    masterGain = actx.createGain();
+    masterGain.gain.value = 1;
+    masterGain.connect(actx.destination);
+    for (const name of busNames) {
+      if (name === "master") continue;
+      const g = actx.createGain();
+      g.gain.value = 1;            // bus level is folded into voice gain by mix()
+      g.connect(masterGain);
+      busGain.set(name, g);
+    }
+  } catch (err) {
+    actx = null;
+    engine.console.log("[Audio] WebAudio unavailable: " + err);
+    return false;
+  }
+
+  // A browser will not start an AudioContext without a user gesture, and the game
+  // opens on a menu that has to be clicked anyway. Resume on the first input of any
+  // kind rather than guessing which, and unhook once it takes.
+  if (!gestureHooked && typeof document !== "undefined" && document.addEventListener) {
+    gestureHooked = true;
+    const unhook = () => {
+      document.removeEventListener("pointerdown", wake, true);
+      document.removeEventListener("keydown", wake, true);
+    };
+    // Unhook only once the context is genuinely RUNNING, never merely because a
+    // gesture happened. `resume()` is a promise and can be refused — a click during
+    // page load, before the context exists, is the ordinary case — and a handler that
+    // removes itself on the first attempt would leave the game permanently silent
+    // with no way back. Cheap to leave armed: it costs one no-op call per input until
+    // it takes, and then it is gone.
+    const wake = () => {
+      if (!actx) return;
+      if (actx.state === "running") { unhook(); return; }
+      const done = actx.resume();
+      if (done && done.then) done.then(() => { if (actx && actx.state === "running") unhook(); }, () => {});
+      else if (actx.state === "running") unhook();
+    };
+    document.addEventListener("pointerdown", wake, true);
+    document.addEventListener("keydown", wake, true);
+  }
+  return true;
+}
+
+/**
+ * Turn a clip's samples straight into an AudioBuffer.
+ *
+ * No WAV round trip: `renderClip` already produces the float samples `buildWav` would
+ * wrap in a header for the engine to ignore, so encoding them only to hand them to
+ * `decodeAudioData` would be two conversions back to where we started. The WAV path
+ * still exists for `audio.loadClip` and for `audio-check.js`, which validates the
+ * bytes a real backend would be given.
+ */
+function waBuffer(name, spec, sr) {
+  if (!actx) return null;
+  if (buffers.has(name)) return buffers.get(name);
+  try {
+    const samples = renderClip(name, spec, sr);
+    const buf = actx.createBuffer(1, samples.length, sr);
+    const ch = new Float32Array(samples.length);
+    for (let i = 0; i < samples.length; i++) ch[i] = samples[i];
+    buf.copyToChannel(ch, 0);
+    buffers.set(name, buf);
+    return buf;
+  } catch (err) {
+    return null;
+  }
+}
+
+function waNode(clipName, spatial, pitch, volume, bus) {
+  const buf = buffers.get(clipName);
+  if (!actx || !buf) return null;
+  const source = actx.createBufferSource();
+  source.buffer = buf;
+  source.playbackRate.value = pitch;
+  const gain = actx.createGain();
+  gain.gain.value = volume;
+  let panner = null;
+  if (spatial && actx.createPanner) {
+    panner = actx.createPanner();
+    panner.panningModel = "equalpower";   // cheap, and the arena is only 12 m across
+    panner.distanceModel = "inverse";
+    panner.refDistance = 4;
+    panner.maxDistance = 40;
+    source.connect(panner);
+    panner.connect(gain);
+  } else {
+    source.connect(gain);
+  }
+  gain.connect(busGain.get(bus) || masterGain);
+  return { src: source, gain, panner };
+}
+
+function waMoveTo(node, point) {
+  if (!node || !node.panner || !point) return;
+  const x = point.x !== undefined ? point.x : point[0] || 0;
+  const y = point.y !== undefined ? point.y : point[1] || 0;
+  const z = point.z !== undefined ? point.z : point[2] || 0;
+  if (node.panner.positionX) {
+    node.panner.positionX.value = x;
+    node.panner.positionY.value = y;
+    node.panner.positionZ.value = z;
+  } else if (node.panner.setPosition) {
+    node.panner.setPosition(x, y, z);
+  }
+}
+
+function waListener(pos, fwd) {
+  if (!actx || !actx.listener) return;
+  const l = actx.listener;
+  if (l.positionX) {
+    l.positionX.value = pos[0]; l.positionY.value = pos[1]; l.positionZ.value = pos[2];
+    if (l.forwardX) {
+      l.forwardX.value = fwd[0]; l.forwardY.value = fwd[1]; l.forwardZ.value = fwd[2];
+      l.upX.value = 0; l.upY.value = 1; l.upZ.value = 0;
+    }
+  } else if (l.setPosition) {
+    l.setPosition(pos[0], pos[1], pos[2]);
+    if (l.setOrientation) l.setOrientation(fwd[0], fwd[1], fwd[2], 0, 1, 0);
+  }
+}
+
+function waSetBusLevel(bus, level, master) {
+  if (bus === "master") { if (masterGain) masterGain.gain.value = master; return; }
+  // Bus level is already folded into every voice gain by mix(), so the node sits at 1
+  // and only drops for an outright mute — which should be immediate.
+  if (busGain.has(bus)) busGain.get(bus).gain.value = level > 0 ? 1 : 0;
+}
+
 export default function create() {
   let audio = null;              // the audio block out of the bundle
   let tune = null;
@@ -264,6 +434,77 @@ export default function create() {
   /** False until every clip is registered. Nothing may be attached before then. */
   let ready = false;
   const offs = [];
+
+  // Live voices belong to the scene, so they are the one part of the WebAudio path
+  // that is per-instance. The context, buses and buffers are shared — see the module
+  // scope block above for why.
+  /** entity -> { src, gain, panner, clip, pitch } for a LOOPING voice. */
+  const waVoices = new Map();
+
+  /** Start or retune a LOOPING voice on an entity. */
+  function waLoop(entity, clipName, pitch, volume, spatial) {
+    if (!actx) return;
+    const live = waVoices.get(entity);
+    if (live && live.clip === clipName) {
+      // Retuning beats restarting: a motor changing pitch should bend, not stutter.
+      live.gain.gain.value = volume;
+      live.src.playbackRate.value = pitch;
+      live.pitch = pitch;
+      return;
+    }
+    if (live) waStop(entity);
+    const spec = audio.clips[clipName];
+    if (!spec) return;
+    const node = waNode(clipName, spatial, pitch, volume, spec.bus);
+    if (!node) return;
+    node.src.loop = true;
+    try { node.src.start(); } catch (err) { return; }
+    node.clip = clipName;
+    node.pitch = pitch;
+    waVoices.set(entity, node);
+  }
+
+  function waStop(entity) {
+    const live = waVoices.get(entity);
+    if (!live) return;
+    try { live.src.stop(); } catch (err) { /* already ended */ }
+    try {
+      live.src.disconnect(); live.gain.disconnect();
+      if (live.panner) live.panner.disconnect();
+    } catch (err) {}
+    waVoices.delete(entity);
+  }
+
+  function waVolume(entity, volume) {
+    const live = waVoices.get(entity);
+    if (live) live.gain.gain.value = volume;
+  }
+
+  /** Fire and forget. The node graph is disposable and tears itself down on end. */
+  function waOneShot(clipName, point, volume, pitch) {
+    if (!actx) return;
+    const spec = audio.clips[clipName];
+    if (!spec) return;
+    const node = waNode(clipName, !!point, pitch, volume, spec.bus);
+    if (!node) return;
+    waMoveTo(node, point);
+    node.src.onended = () => {
+      try {
+        node.src.disconnect(); node.gain.disconnect();
+        if (node.panner) node.panner.disconnect();
+      } catch (err) {}
+    };
+    try { node.src.start(); } catch (err) {}
+  }
+
+  /**
+   * Scene teardown stops this scene's voices and NOTHING else. The context and the
+   * decoded buffers deliberately survive: closing them here is what made audio work
+   * on the first screen and go silent for the rest of the session.
+   */
+  function waTeardown() {
+    for (const e of Array.from(waVoices.keys())) waStop(e);
+  }
 
   /** Pooled one-shot voice entities, and the next one to steal. */
   let voices = [];
@@ -339,6 +580,11 @@ export default function create() {
       // The entity can have been culled between the event and here — debris does
       // exactly that. Drop it quietly rather than retrying every frame.
       if (!r || r.isError) { srcState.delete(entity); return false; }
+      // A pitch change on a LIVE loop bends the voice rather than restarting it, so a
+      // motor slides instead of stuttering. play() re-arms the engine's own flag.
+      if (want.loop && waVoices.has(entity)) {
+        waLoop(entity, want.clip, want.pitch, want.volume, want.spatial);
+      }
       want.playing = false;
       srcState.set(entity, want);
     } else {
@@ -346,6 +592,7 @@ export default function create() {
         const r = call("audio.setVolume", { entity, volume: want.volume });
         if (!r || r.isError) { srcState.delete(entity); return false; }
         have.volume = want.volume;
+        waVolume(entity, want.volume);
       }
       // Carry the pitch we did NOT rewrite, so drift is measured from what the
       // engine actually holds rather than from what we last wanted.
@@ -360,7 +607,12 @@ export default function create() {
     const st = srcState.get(entity);
     const r = call("audio.play", { entity });
     if (!r || r.isError) { srcState.delete(entity); return false; }
-    if (st) st.playing = true;
+    if (st) {
+      st.playing = true;
+      // Start the audible voice from the state just committed, so the two paths can
+      // only ever carry the same clip, pitch and gain.
+      if (st.loop) waLoop(entity, st.clip, st.pitch, st.volume, st.spatial);
+    }
     return true;
   }
 
@@ -370,6 +622,7 @@ export default function create() {
     const r = call("audio.stop", { entity });
     if (!r || r.isError) { srcState.delete(entity); return; }
     st.playing = false;
+    waStop(entity);
   }
 
   /** Fire a one-shot from the pool, at a world point if one is given. */
@@ -383,12 +636,13 @@ export default function create() {
         patch: { position: [point.x || point[0] || 0, point.y || point[1] || 0, point.z || point[2] || 0] },
       });
     }
-    if (!setSource(call, ent, clipName, {
-      pitch: pitch === undefined ? 1 : pitch,
-      volume: mix(clipName, dynamic),
-      loop: false, spatial: !!point,
-    })) return;
+    const vol = mix(clipName, dynamic);
+    const pit = pitch === undefined ? 1 : pitch;
+    if (!setSource(call, ent, clipName, { pitch: pit, volume: vol, loop: false, spatial: !!point })) return;
     play(call, ent);
+    // The audible one. Independent of the pooled voice entity — WebAudio disposes its
+    // own nodes on end, so a one-shot cannot be cut off by the pool wrapping around.
+    waOneShot(clipName, point, vol, pit);
   }
 
   // ------------------------------------------------------------------- lifecycle
@@ -428,6 +682,13 @@ export default function create() {
       const clipNames = Object.keys(audio.clips).filter((k) => k[0] !== "$");
       let bytesTotal = 0;
       const jobs = [];
+
+      // The real output, built first and synchronously. The engine's registration
+      // below produces nothing audible, so there is no reason to wait on it.
+      const haveWa = waInit(engine, Object.keys(audio.buses));
+      let waCount = 0;
+      if (haveWa) for (const name of clipNames) if (waBuffer(name, audio.clips[name], sr)) waCount++;
+
       for (const name of clipNames) {
         const bytes = buildWav(name, audio.clips[name], sr);
         bytesTotal += bytes.length;
@@ -590,12 +851,19 @@ export default function create() {
         buses[p.bus] = Math.max(0, Math.min(1, p.volume));
         // Force the looping voices to pick the new level up.
         for (const st of srcState.values()) st.volume = -1;
+        // ...and move the bus node itself so a mute is immediate rather than waiting
+        // for each voice to notice on its next update. Bus level is already folded
+        // into every voice gain by mix(), so the node stays at 1 except for silence.
+        waSetBusLevel(p.bus, buses[p.bus], buses.master);
       }));
 
       started = true;
       engine.console.log("[Audio] wired — " + voices.length + " voices"
         + (listenerEnt ? ", listener on camera" : ", no listener")
-        + ", " + clipNames.length + " clips registering");
+        + ", " + clipNames.length + " clips registering"
+        + (haveWa
+            ? ", WebAudio " + waCount + "/" + clipNames.length + " buffers (" + (actx && actx.state) + ")"
+            : ", NO WebAudio — silent"));
     },
 
     onDestroy({ call }) {
@@ -606,6 +874,7 @@ export default function create() {
       if (stingEnt) call("scene.deleteEntity", { entity: stingEnt });
       voices = []; crowdEnt = 0; stingEnt = 0;
       ready = false;
+      waTeardown();
       srcState.clear();
       health.clear();
       started = false;
@@ -629,6 +898,7 @@ export default function create() {
           const fy = -(2 * (y * z - w * x));
           const fz = -(1 - 2 * (x * x + y * y));
           call("audio.setListener", { position: [p[0], p[1], p[2]], forward: [fx, fy, fz], up: [0, 1, 0] });
+          waListener([p[0], p[1], p[2]], [fx, fy, fz]);
         }
       }
 
@@ -664,6 +934,10 @@ export default function create() {
         })) continue;
         const st = srcState.get(c.entity);
         if (st && !st.playing) play(call, c.entity);
+        // The motor rides a moving bot; its panner has to move too or the whole
+        // arena sounds like it is happening in one spot.
+        const live = waVoices.get(c.entity);
+        if (live) waMoveTo(live, s.position);
       }
 
       // T-6.19 — the crowd. Energy decays on its own; a bot near death lifts the
@@ -681,7 +955,7 @@ export default function create() {
         const st = srcState.get(crowdEnt);
         if (Math.abs(st.volume - want) > 0.01) {
           const r = call("audio.setVolume", { entity: crowdEnt, volume: want });
-          if (r && !r.isError) st.volume = want;
+          if (r && !r.isError) { st.volume = want; waVolume(crowdEnt, want); }
         }
       }
     },
