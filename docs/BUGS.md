@@ -19,6 +19,23 @@ Engine defects live in `engine-fixes.md`, not here. This file is the game's own.
 
 ## Major
 
+### BB-012 — a deployed match froze when a weapon's debris was culled · **fixed**
+
+Found while doing T-2.25, by checking an assumption rather than by playing. The runtime's script
+loop reads a Script component off every queried entity and dereferences it with no null guard, so
+deleting a Script-bearing entity from inside a hook takes the whole frame loop down — the game
+freezes on one uncaught error.
+
+`DamageSystem` culls debris from `onFixedUpdate`, and a sheared-off weapon **is** debris carrying
+`WeaponController`. So any deployed match that ran long enough for a weapon to come off and then
+expire — or for one to be knocked into a pit — would have frozen. Nothing in the editor showed it,
+because the editor has BUG-011's fix; the runtime never got it (LIM-009).
+
+Fixed by backporting the guard in `tools/shim-build.js`. Verified by deleting a live weapon entity
+mid-match in the deployed build and confirming the loop advanced another 120 frames instead of
+stopping.
+
+
 ### BB-010 — bots rendered with no body · **fixed**
 
 Reported from play: "the bots are missing the main body block". Both chassis and both arena

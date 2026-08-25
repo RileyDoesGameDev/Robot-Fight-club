@@ -148,10 +148,33 @@ Derived from `Battle_Bots_Project_Proposal (1).docx`. Every task is written to b
 
 ### 2.5 Engine-fix follow-ups (added 2026-08-20)
 
-- [ ] **T-2.24** Migrate `BotAssembler.ts` and `WorkshopController.ts` off the old workarounds: use `ctx.call` instead of `engine.mcp.toolMap` (which was private and skipped zod defaults — the cause of the hidden-canvas bug), and `Script.params` instead of encoding arguments into `Name`. `BotDrive.ts` and `DamageSystem.ts` already use both.
-- [ ] **T-2.25** Delete `WorkshopController`'s 3-frame disable/re-enable rebuild machine — BUG-011 is fixed, so a Script-bearing entity can be deleted from inside a hook directly.
-- [ ] **T-2.26** Move input-map application out of `BotDrive.onStart` into a scene bootstrap. `input.mapAction` bindings are runtime-only and are not serialized, so *something* must re-apply them after every scene load; a bot is the wrong owner. Fold into T-6.2.
-- [ ] **T-2.27** Re-check point-light intensity now that blank captures are impossible: three.js 0.171 makes `point` intensity candela with inverse-square falloff, so the component default of 1 is effectively invisible at metre scale (`engine-fixes.md` LIM-003). Our scenes use directional + ambient only, so this is a look-pass item, not a bug.
+- [x] **T-2.24** Migrate `BotAssembler.ts` and `WorkshopController.ts` off the old workarounds: use `ctx.call` instead of `engine.mcp.toolMap` (which was private and skipped zod defaults — the cause of the hidden-canvas bug), and `Script.params` instead of encoding arguments into `Name`. `BotDrive.ts` and `DamageSystem.ts` already use both.
+  - **Both halves done.** No script reaches into `engine.mcp.toolMap` any more — the only remaining mentions are the comments explaining why not. `assemble()` takes `call` as its first argument; `WorkshopController`'s `H("tool")({args})` shape survives unchanged as a thin adapter over `ctx.call`, so 27 call sites migrated by changing one line.
+  - **Why it mattered beyond tidiness:** raw handlers skip zod, and skipping zod skips the schema DEFAULTS. That is what produced the hidden-canvas bug — an omitted field stayed `undefined` instead of taking the default the schema promised. Every call now goes through the schema.
+  - Arguments moved from the entity Name into `Script.params`: the two arena spawners in `Arena01` and `DemoCenter` carry `{ blueprintId, role }`, and both dynamic creators (`BotSelectController`, `WorkshopController`) pass params to `script.attach`. The Name keeps exactly one job — the **spent flag** (`BotSpawn:` → `BotSpawned:`) that makes assembly idempotent. State in the name is fine; arguments in the name were the problem.
+  - Name-encoded markers are still accepted, so a scene authored before this change still loads. That fallback is the only thing keeping `BotSpawn:<id>:<role>` meaningful and can go once no scene uses it.
+  - **(V)** Verified live across all three marker creators: `Arena01` and `DemoCenter` spawners assemble from params (`BotSpawned:__selected:player` with `params { blueprintId: "__selected", role: "player" }`), `BotSelect` builds its turntable preview, and the Workshop assembles its draft — 0 errors.
+  - Found and fixed on the way: the report object still returned a `visual` field that the chassis-rendering fix (BB-010) had deleted, which threw `visual is not defined` and failed every assembly.
+- [~] **T-2.25** Delete `WorkshopController`'s 3-frame disable/re-enable rebuild machine — BUG-011 is fixed, so a Script-bearing entity can be deleted from inside a hook directly.
+  - **Reduced to 2 frames, not deleted — and the reason is the point.** BUG-011 is fixed *in the editor*. The deployed runtime still has the unguarded read: its script loop does `A.getComponent(g, Script)` and dereferences `.enabled` with no null check, so deleting a Script-bearing entity from inside a hook still takes the whole frame loop down there (LIM-009 again — the player is an older engine).
+  - **This is not just a Workshop concern.** `DamageSystem` culls debris from `onFixedUpdate`, and a sheared-off weapon *is* debris carrying `WeaponController`. Any deployed match that ran long enough for a weapon to come off and then expire would have frozen. `tools/shim-build.js` now backports the guard, which is the most consequential patch in that file.
+  - So the marker still lives, and only the re-enable waits a frame — the teardown and disable happen immediately, since they are ordinary calls with no ordering hazard. One state instead of three, one frame of latency instead of two.
+  - Left open rather than closed: a rebuild that depends on a shim patch to not freeze the game is a worse design than one that never deletes the entity. Delete-and-recreate becomes correct the day the runtime carries BUG-011's fix natively.
+- [x] **T-2.26** Move input-map application out of `BotDrive.onStart` into a scene bootstrap. `input.mapAction` bindings are runtime-only and are not serialized, so *something* must re-apply them after every scene load; a bot is the wrong owner. Fold into T-6.2.
+  - Moved into `MatchDirector`, which is the scene bootstrap T-6.2 already built: one per gameplay scene, starts before anything is driveable, and already owns the rest of scene setup.
+  - **A bot was the wrong owner in a way that had already bitten.** Bindings are one global registry, and the first bot to start would set the guard flag — so in a versus match whichever bot started second found the work "done" and never got its keys. Binding is still per-action rather than all-or-nothing, which is the other half of the same bug: gating the whole map on one action already existing meant any action added later never bound at all in a session that had applied the old set, and that is how the F3 AI overlay silently went missing.
+  - `BotDrive` is now purely an actuator: it reads actions, it does not create them.
+- [x] **T-2.27** Re-check point-light intensity now that blank captures are impossible: three.js 0.171 makes `point` intensity candela with inverse-square falloff, so the component default of 1 is effectively invisible at metre scale (`engine-fixes.md` LIM-003). Our scenes use directional + ambient only, so this is a look-pass item, not a bug.
+  - **Re-checked, and the premise holds: there are no point lights in this game.** All six scenes audited — every light is `directional` or `ambient`:
+
+    | Scene | Lights |
+    |---|---|
+    | Arena01 / DemoCenter | directional 2.6 + ambient 0.95 |
+    | BotSelect / Workshop | directional 2.2 + ambient 0.85 |
+    | MainMenu / PostMatch | directional 1.2 |
+
+  - Nothing to fix. The candela trap is real and stays documented in LIM-003 for whoever adds the first point light — at metre scale the component default of 1 is effectively black, which reads as a broken light rather than a dim one.
+  - Noted while auditing: `MainMenu` and `PostMatch` have no ambient fill. They are UI screens with almost no 3D so it does not show, but it is an inconsistency for the type/colour pass (T-6.15).
 
 ---
 
@@ -271,7 +294,12 @@ Derived from `Battle_Bots_Project_Proposal (1).docx`. Every task is written to b
   - **Deferred (2026-08-19)** — player customisation is out of scope. Authored per-bot `paint.primary` / `paint.secondary` already drives greybox colour in `BotAssembler`, which is enough to tell two bots apart on screen.
 - [>] **T-4.12** Add decals/patterns using the texture tools (`texture_create`, `texture_paintStroke`, `texture_applyToEntity`) or a UV-atlas swap. Pick the cheaper path.
   - **Deferred (2026-08-19)** with player customisation.
-- [ ] **T-4.13** Add a wear/scratch overlay that intensifies with damage state.
+- [x] **T-4.13** Add a wear/scratch overlay that intensifies with damage state.
+  - **Carried by colour, because the art descope (§4.4) removed the things this task assumed.** There is no texture to overlay and no paint-maskable channel to drive, so every part now darkens and desaturates *continuously* as its hp falls — from its own paint toward scorched metal (`#4a4038`), up to 72 % of the way at zero.
+  - That is a better fit than a texture would have been, and not only because it is what is available. The two discrete steps from T-3.5 tell you a part crossed a threshold; they cannot tell you a part is at 60 %. A continuous tint reads as "this one is getting chewed up" *while it happens*, which is what a player is actually trying to read off a bot mid-fight.
+  - The stepped colours still win at their thresholds — `damaged` and `destroyed` have mechanical meaning (a weaker mount, a dropped joint) and should look like states, not like slightly more wear. So wear only applies while a part is `intact`.
+  - Quantised to 6 steps so a blade grinding along a plate does not issue a `setComponent` per contact; the visible result is identical and the call count is bounded.
+  - **Measured** on the Ravager's chassis paint: `#6f2f8f` → `#6b3185` (80 % hp) → `#623570` (50 %) → `#59395b` (20 %) → `#543b50` (0 %).
 - [~] **T-4.14** Add bot naming + a saved bot roster with thumbnails (`assets_thumbnail` or `renderer_captureScreenshot`).
   - **Naming and the roster are done; thumbnails are not.** 9 named blueprints in `game/data/bots/` with a live `BotSelect` roster that shows each bot's name, weight class, mass, weapon, armour total and estimated top speed, and previews the highlighted bot on a turntable.
   - The turntable preview is arguably the better answer than a thumbnail — it is the real bot, assembled from the same blueprint the match will use, rather than a picture that can go stale. But it is not what the task asks for, and a static thumbnail is what a roster *grid* would need, so this stays open rather than being quietly redefined.
@@ -621,7 +649,12 @@ Derived from `Battle_Bots_Project_Proposal (1).docx`. Every task is written to b
 
 ## 8. Week 8 — Final Polish & Presentation
 
-- [ ] **T-8.1** Final QA pass against a written test matrix (every scene, every weapon, both multiplayer paths, save/load, reset).
+- [x] **T-8.1** Final QA pass against a written test matrix (every scene, every weapon, both multiplayer paths, save/load, reset). **(V)**
+  - `docs/QA-MATRIX.md`. **41 cases, 0 failures, 0 engine errors**, run against the live engine with the repo's scripts and scenes pushed in.
+  - All six scenes load clean and bring up their own systems. All **six weapon archetypes** come up correctly — including the two that correctly come up with *no* controller, which are the rows worth having: a passive wedge that quietly acquired a controller would spin, and one that failed to report itself would look identical to a bug. Both multiplayer paths wire their seats correctly (single: 1 AI brain; versus: 0 brains, both seats human). History survives a scene cycle; a live match reloads to 2 rebuilt chassis with 0 errors and no duplicate bots.
+  - **This is a crash-and-wiring pass and the document says so.** It is driven by the engine and the AI; nobody is trying to win and nobody is confused, so it cannot tell you a weapon feels weak or that a player could not work out how to self-right. That is T-7.1's job and it needs five humans.
+  - The distinction is written in because this project has already been caught by it once: 33 telemetry files that looked like play data and were AI self-play and parked bots (T-7.5).
+  - Known gaps recorded rather than hidden: no audio case can pass, nothing here measures feel, the Workshop is only exercised as far as it assembles, and the build cases are run by hand in a browser because a hidden tab suspends `requestAnimationFrame`.
 - [~] **T-8.2** Produce the deployable build: `build_export` / `build_bundle` via the engine-deployer "Deploy as WebGL" path; verify it runs from `:4173` in a clean browser profile. **(V)**
   - **The build itself is clean and the game is playable in a container — but only because the exported artifact is patched afterwards, so this is not `[x]`.**
   - `build.export --format site --name battle-bots` from a stopped `MainMenu`: **495 KB**, 18 scripts, 9 audio clips, 24 input actions, 0 missing behaviors, 0 warnings, inside the 5 MB budget. Deployed at **`http://localhost:4300`** (`battle-bots`, nginx, `--restart unless-stopped`).
@@ -639,8 +672,17 @@ Derived from `Battle_Bots_Project_Proposal (1).docx`. Every task is written to b
 - [ ] **T-8.4** Capture marketing screenshots (`renderer_captureScreenshot`, `viewport_captureViews`).
 - [ ] **T-8.5** Cut the trailer (build → best match footage → 45–60s).
 - [ ] **T-8.6** Build the store/presentation page: description, screenshots, trailer, playable link.
-- [ ] **T-8.7** Write the final README: what it is, how to play, controls, what's implemented, known issues.
-- [ ] **T-8.8** Write the postmortem: what the AI feedback in §4 changed, what the scope cuts bought, what the engine choice cost and saved.
+- [x] **T-8.7** Write the final README: what it is, how to play, controls, what's implemented, known issues.
+  - `README.md` opens with what the game actually *is* — damage that is physical rather than a health bar with extra steps, four weapon archetypes that play differently on purpose, a utility AI whose difficulty tiers change how well it plays rather than what it is made of — then how to play it, the controls, and a **Known issues** table that leads with the two red ones rather than burying them.
+  - Known issues names the sound and the build shim first, because those are the two things someone will otherwise discover for themselves and mistrust the rest of the document for.
+  - Document index refreshed to include the playtest kit, the QA matrix, the bug list, `engine-fixes.md` and the postmortem.
+- [x] **T-8.8** Write the postmortem: what the AI feedback in §4 changed, what the scope cuts bought, what the engine choice cost and saved.
+  - `docs/POSTMORTEM.md`, answering the three questions asked and then the things that do not fit them.
+  - **The feedback:** two notes taken (cut the build system; statistics not ML) and one refused (drop destruction to a visual effect). The refusal was right — destruction *is* the game, and risk R1, the headline physics risk of the whole proposal, was never close: 0.3–0.4 ms per frame against 16.67.
+  - **The cuts:** the build system bought the entire back half of the project. The art descope retired R6 and made three more tasks moot. The playtests were *refused* rather than cut — and the most tempting shortcut in the project was right there, 33 telemetry files and a working aggregation script, which would have made the central claim false via a step nobody would ever have checked.
+  - **The engine:** Rapier's `breakForce` and `contactForceEventThreshold` *are* the damage model and saved the window. What it cost was a recurring pattern — the engine being confidently wrong rather than absent. A missing feature costs an afternoon; a feature that reports success and does nothing costs a day and some trust.
+  - The method that came out of it: verify outside the thing you are testing, and mutation-test the verifier. Three of the four check harnesses passed against code with the behaviour deleted until they were broken on purpose.
+  - Ends with what I would do differently, of which the first is the real lesson: **deploy in week 2, not week 8** — three of the four expensive engine findings are deployment bugs that sat there the whole time.
 - [ ] **T-8.9** Build the presentation deck and rehearse; record a fallback video in case the live demo fails.
 - [ ] **T-8.10** Final commit + tag `v1.0`; confirm LFS objects pushed.
 

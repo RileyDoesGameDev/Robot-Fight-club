@@ -5,17 +5,34 @@ opponents, then fight in a destructible arena where wheels get sheared off and w
 
 Solo project · 8-week window · feature-complete target: end of week 6.
 
-> **Scope change, 2026-08-19:** the player-facing build system is cut. The Create stage is now **choosing
-> a prebuilt bot**, not building one. Rationale, and what it costs the pitch, in
-> [docs/DESIGN.md](docs/DESIGN.md) §0.
+**Play it: <http://localhost:4300>** — see [Playing it](#playing-it).
 
-**Status: the vertical-slice gate is passed (T-3.16, 2026-08-20).** Pick one of six prebuilt bots in
-**Bot Select**, then **PRACTICE** to spar in `DemoCenter` or **FIGHT** a timed match in `Arena01`: a
-3-second countdown, a scripted AI opponent, working damage with part degradation, detachment and
-knockout, and a verdict on knockout or on damage dealt at time expiry — then Rematch or Change Bot.
-No editor needed once you are in. A full part-fitting **Workshop** also exists and is kept as a stretch
-feature (it is how the roster gets authored). See [docs/VERTICAL-SLICE.md](docs/VERTICAL-SLICE.md) for
-the gate and its evidence.
+## What it is
+
+You pick a combat robot from a roster of nine, and fight it in a 12 × 12 m arena with corner pits and
+two floor spinners. Matches end by knockout, by immobilisation, by a bot going into a pit, or on
+damage dealt when the clock runs out.
+
+Damage is physical, not a health bar with extra steps. Every part — each wheel, the weapon, the
+armour plate, the motor — is its own rigid body on a breakable joint, with its own hit points. Hit a
+wheel hard enough and it shears off and becomes debris; lose enough wheels and you are immobilised
+and you lose. A damaged motor drives slower. A damaged mount shears sooner. Armour is directional,
+so where you get hit matters as much as how hard.
+
+The four weapon archetypes play differently on purpose: a horizontal bar spinner trades everything
+for one enormous hit, a vertical drum is steadier, an axe is a burst weapon on a cooldown, a flipper
+tries to put you in a pit, and a passive wedge has no moving parts at all and wins on geometry.
+
+The opponent is a utility AI — it scores every action it could take against weighted considerations
+(range, alignment, its own health, yours, how long the grind has gone on, how close it is to a pit)
+and takes the best one. Three personalities, three difficulty tiers, and the tiers change how well
+it plays rather than what it is made of.
+
+**Status.** Feature-complete except for sound, which the engine cannot play (see
+[Known issues](#known-issues)). The vertical-slice gate passed in week 3; weeks 4–7 added the four
+weapons, destruction, the utility AI, local multiplayer, HUD, game feel and difficulty. A playable
+build runs in a Docker container. The art is deliberately greybox — see
+[Art direction](#art-direction-and-naming-t-422).
 
 ![Two assembled bots facing off in Arena01](docs/images/assembled-bots.png)
 
@@ -27,6 +44,11 @@ the gate and its evidence.
 | [docs/engine-notes.md](docs/engine-notes.md) | Engine gotchas that cost real time — **read before writing a gameplay script** |
 | [docs/engine-bugs.md](docs/engine-bugs.md) | Filable engine bugs & limitations hit while building this game |
 | [docs/smpl-engine-README.md](docs/smpl-engine-README.md) | Reference copy of the engine's own README |
+| [docs/PLAYTEST.md](docs/PLAYTEST.md) | Playtest session kit — script, match sheet, feedback form (T-7.1) |
+| [docs/QA-MATRIX.md](docs/QA-MATRIX.md) | The QA pass: 41 cases across scenes, weapons, multiplayer, persistence (T-8.1) |
+| [docs/BUGS.md](docs/BUGS.md) | Triaged bug list for the game itself |
+| [engine-fixes.md](engine-fixes.md) | Engine bugs and limitations found building this — **read this one** |
+| [docs/POSTMORTEM.md](docs/POSTMORTEM.md) | What worked, what did not, what the engine cost (T-8.8) |
 | `Battle_Bots_Project_Proposal (1).docx` | The original proposal |
 
 ---
@@ -227,6 +249,21 @@ node game/data/validate.js
 Checks that every part has required fields, socket offsets sit on the 0.02 m lattice, part/socket category
 constraints agree, blueprint attachments reference real sockets, no socket is double-filled, and each
 blueprint's cached mass and weight class match the sum of its parts.
+
+## Known issues
+
+Honest list. Detail and repro in [docs/BUGS.md](docs/BUGS.md); engine-side causes in
+[engine-fixes.md](engine-fixes.md).
+
+| | Issue |
+|---|---|
+| 🔴 | **There is no sound.** Nine clips are synthesised, mixed across five buses, pitched by rpm and road speed, and spatialised on the camera — and the engine has no audio backend in *any* profile, so none of it is audible. Everything is built and inert (BB-011 / LIM-006). |
+| 🔴 | **A stock `build.export` cannot run this game.** The deployed player is an older engine than the editor: no project filesystem, no `ctx.call`, and `script.attach` drops `params`. `tools/shim-build.js` patches the artifact back into a working state (BB-008 / LIM-009). |
+| 🟠 | **No slow motion on a knockout.** The engine has no time scale at all; the knockout gets a cinematic camera push-in instead (BB-003 / LIM-008). |
+| 🟠 | **No playtests have been run.** Five week-7 and week-8 tasks are blocked on real testers, and are deliberately not faked — including the AI weight re-tune, which would otherwise be tuned against a parked dummy (T-7.1, T-7.4, T-7.5, T-7.10). |
+| 🟡 | **Type scale is not unified.** Font sizes are legible at any resolution now, but they are still chosen per screen rather than from one ramp, and two HUD labels clip (T-6.15). |
+| 🟡 | **No bot thumbnails.** The roster shows a live turntable preview instead; a static thumbnail needs a staged camera (T-4.14, BUG-012). |
+| ⬜ | **Two traces never reproduced:** a bot launched out of the arena, and an AI deadlocking against a wall. Both predate a balance fix and neither reproduces on the current build, but the second is a decision bug and decision bugs do not fix themselves (BB-006, BB-007). |
 
 ## Controls
 
