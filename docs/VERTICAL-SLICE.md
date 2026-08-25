@@ -27,7 +27,7 @@ Both bots already exist as authored blueprints: `game/data/bots/player-slice.jso
 The gate is met when a player can, without touching the editor:
 
 1. **Create** — open `BotSelect`, page through the roster, see each bot's stats (mass, class, armour, weapon), and confirm a choice.
-2. **Test** — launch into `DemoCenter`, drive with `WSAD`, spin the weapon with `Space`, self-right with `R`.
+2. **Test** — launch into `DemoCenter`, drive with `WSAD`, toggle the weapon with `E`, self-right with `R`.
 3. **Destroy** — launch into `Arena01` against the scripted opponent and land hits that:
    - deal damage through the contact-force path (`physics.contact` → `DamageSystem.ts`),
    - drive at least one part from `intact` → `damaged` → `destroyed`,

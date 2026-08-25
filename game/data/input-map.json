@@ -1,27 +1,29 @@
 {
-  "$comment": "Action -> KeyboardEvent.code bindings, applied with input.mapAction. TWO PLAYERS SHARE ONE KEYBOARD (T-6.6): player1 keeps WASD and player2 takes the arrow cluster, so the two sets never overlap. Verified that both resolve simultaneously and independently — 7 keys held at once, every action on both sides reading true. Gamepad is NOT here: the engine's input layer exposes only keysHeld/keysPressed/keysReleased/mouse, with no gamepad channel at all, so pad support is engine work rather than game work. See T-6.6.",
+  "$comment": "Action -> KeyboardEvent.code bindings, applied with input.mapAction by MatchDirector (T-2.26). TWO PLAYERS SHARE ONE KEYBOARD (T-6.6): player 1 has the WASD cluster with E for the weapon, player 2 has the numpad. The two sets never overlap. Bindings are by `code` (physical key), not `key`, so the numpad works whether or not NumLock is on — with NumLock off the numpad still reports Numpad8/4/5/6 as its code even though its `key` becomes ArrowUp/Home/etc. Gamepad is NOT here: the engine's input layer exposes only keysHeld/keysPressed/keysReleased/mouse and has no gamepad channel at all, so pad support is engine work rather than game work.",
 
-  "$player1Note": "Arrow keys were removed from player1's drive and turn. They were duplicate bindings for the single-player convenience of WASD-or-arrows, and they now belong to player 2 — leaving them on both would have made every P2 input also drive P1.",
+  "$weaponNote": "Weapon is a TOGGLE, not a hold (2026-08-25). Press once to bring the weapon up, press again to drop it. A spinner takes real time to reach speed, so holding a key for the whole match was both tiring and pointless; and letting go to reposition meant spinning down and paying the spin-up again. WeaponController reads this with input.actionPressed (edge) rather than actionHeld (level).",
+
+  "$player1Note": "Weapon moved from Space to KeyE (2026-08-25). Space is now unbound and free. Arrow keys were removed from player 1's drive and turn earlier — they were duplicate bindings for single-player convenience and they now belong to nobody, since player 2 is on the numpad.",
   "player1": {
     "drive.forward": ["KeyW"],
     "drive.back": ["KeyS"],
     "turn.left": ["KeyA"],
     "turn.right": ["KeyD"],
-    "weapon.primary": ["Space"],
+    "weapon.primary": ["KeyE"],
     "weapon.secondary": ["ShiftLeft"],
     "bot.selfRight": ["KeyR"],
     "ui.pause": ["Escape"],
     "ai.debug": ["F3"]
   },
 
-  "$player2Note": "Prefixed `p2.` rather than living in a parallel action namespace: actions are a flat registry, so the prefix is what keeps the two players' bindings from colliding, and BotDrive picks its prefix from `params.playerIndex`. Weapon is on both Numpad0 and ShiftRight because a laptop may have no numpad.",
+  "$player2Note": "Prefixed `p2.` rather than living in a parallel action namespace: actions are a flat registry, so the prefix is what keeps the two players' bindings from colliding. BotDrive picks its prefix from `params.playerIndex`, and WeaponController from `params.action`, which BotAssembler resolves per role — before that fix both bots' weapons read player 1's action and fired together off one key. Numpad layout is the familiar 8/4/6 with 5 as reverse, so the four movement keys sit under the fingers as a block.",
   "player2": {
-    "p2.drive.forward": ["ArrowUp"],
-    "p2.drive.back": ["ArrowDown"],
-    "p2.turn.left": ["ArrowLeft"],
-    "p2.turn.right": ["ArrowRight"],
-    "p2.weapon.primary": ["Numpad0", "ShiftRight"],
+    "p2.drive.forward": ["Numpad8"],
+    "p2.drive.back": ["Numpad5"],
+    "p2.turn.left": ["Numpad4"],
+    "p2.turn.right": ["Numpad6"],
+    "p2.weapon.primary": ["Numpad9"],
     "p2.weapon.secondary": ["NumpadDecimal"],
-    "p2.bot.selfRight": ["Numpad1", "Slash"]
+    "p2.bot.selfRight": ["Numpad7"]
   }
 }

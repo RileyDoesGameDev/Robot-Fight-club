@@ -367,6 +367,38 @@ function waBuffer(name, spec, sr) {
   }
 }
 
+/**
+ * Upgrade a clip from its synthesised fallback to the sourced recording.
+ *
+ * Deliberately fire-and-forget and deliberately late. Synthesis has already put a
+ * usable buffer in place, so the game is audible on the first frame and nothing here
+ * can make it silent: a 404, a decode failure, a format the browser will not take, or
+ * no network at all simply leaves the synthesised version in the map. That is why the
+ * synth specs are maintained for every clip that has a file — the fallback has to be
+ * a real sound, not an empty slot.
+ *
+ * `decodeAudioData` is the right call here, unlike in `waBuffer`: an mp3 is compressed
+ * bytes we did not generate, so there is genuinely something to decode.
+ */
+function waLoadFile(name, url, engine) {
+  if (!actx) return Promise.resolve(false);
+  return fetch(url)
+    .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error("HTTP " + r.status))))
+    .then((bytes) => actx.decodeAudioData(bytes))
+    .then((buf) => {
+      // Voices already playing keep the buffer they started with; the swap takes
+      // effect the next time a voice is created. A motor bed started in the first
+      // second will therefore stay synthesised until the scene changes, which is a
+      // better trade than cutting a running loop to substitute it.
+      buffers.set(name, buf);
+      return true;
+    })
+    .catch((err) => {
+      engine.console.log("[Audio] " + name + " kept the synthesised version (" + err.message + ")");
+      return false;
+    });
+}
+
 function waNode(clipName, spatial, pitch, volume, bus) {
   const buf = buffers.get(clipName);
   if (!actx || !buf) return null;
@@ -525,6 +557,8 @@ export default function create() {
   let crowdTarget = 0;
   let impactCool = 0;
   let paused = false;
+  /** Weapons seen to swing, so a connecting hit can pick the right impact clip. */
+  const swingWeapons = new Set();
   let listenerEnt = 0;
   let started = false;
 
@@ -661,6 +695,7 @@ export default function create() {
 
       srcState.clear();
       health.clear();
+      swingWeapons.clear();
       ready = false;
       crowdLevel = 0; crowdTarget = 0; impactCool = 0; paused = false;
       chassis = []; rescan = 0; nextVoice = 0;
@@ -688,6 +723,19 @@ export default function create() {
       const haveWa = waInit(engine, Object.keys(audio.buses));
       let waCount = 0;
       if (haveWa) for (const name of clipNames) if (waBuffer(name, audio.clips[name], sr)) waCount++;
+
+      // Then upgrade whichever of them have a sourced recording. Asynchronous and
+      // unawaited on purpose — see waLoadFile.
+      const base = audio.fileBase || "./audio/";
+      const sourced = clipNames.filter((n) => audio.clips[n].file);
+      if (haveWa && sourced.length) {
+        Promise.all(sourced.map((n) => waLoadFile(n, base + audio.clips[n].file, engine)))
+          .then((rs) => {
+            const got = rs.filter(Boolean).length;
+            engine.console.log("[Audio] " + got + "/" + sourced.length + " sourced clips loaded"
+              + (got < sourced.length ? " — the rest stay synthesised" : ""));
+          });
+      }
 
       for (const name of clipNames) {
         const bytes = buildWav(name, audio.clips[name], sr);
@@ -751,7 +799,12 @@ export default function create() {
         // Harder hits are louder AND lower — a big strike should sound heavy, not
         // just loud, so force drives pitch downward as well as volume up.
         const t = Math.min(1, force / (tune.impactMinForceN * 6));
-        oneShot(call, "impact", p.point, 0.45 + t * 0.55, 1.15 - t * 0.35);
+        // Which metal hit which. One clank pitched by force told you that something
+        // connected; three tell you WHAT did, which is information a player can act
+        // on. A swing weapon is identified by having emitted `weaponSwing` — the
+        // damage model does not carry the archetype, and this costs nothing.
+        const clip = swingWeapons.has(p.weapon) ? "hammerHit" : (t > 0.66 ? "impactHeavy" : "impact");
+        oneShot(call, clip, p.point, 0.45 + t * 0.55, 1.15 - t * 0.35);
         oneShot(call, "spark", p.point, 0.5 + t * 0.5, 0.9 + t * 0.4);
         // T-6.19 — the room reacts to contact.
         crowdTarget = Math.min(1, crowdTarget + tune.crowdPerHit * (0.4 + t));
@@ -777,6 +830,23 @@ export default function create() {
         })) return;
         const st = srcState.get(p.entity);
         if (st && !st.playing && !paused) play(call, p.entity);
+      }));
+
+      // AUDIO-GAPS #1 — `battlebots.weaponSwing` was the only event in the game with
+      // no listener at all, so an axe or flipper that MISSED was completely silent and
+      // you could not hear the opponent commit. It also tells us which weapons are
+      // swing weapons, which is what lets a connecting hit pick the right impact.
+      offs.push(engine.mcp.on("battlebots.weaponSwing", (p) => {
+        if (!p || !p.entity || paused) return;
+        swingWeapons.add(p.entity);
+        oneShot(call, "swing", null, 1, 1);
+      }));
+
+      // AUDIO-GAPS #2 — a part reaching `destroyed`. VfxDirector already smokes a
+      // damaged part and sets a dead motor on fire; this is the audio half.
+      offs.push(engine.mcp.on("battlebots.partState", (p) => {
+        if (!p || paused) return;
+        if (p.state === "destroyed") oneShot(call, "partBreak", null, 1, 1);
       }));
 
       offs.push(engine.mcp.on("battlebots.weaponJammed", (p) => {

@@ -195,7 +195,7 @@ export default function create() {
     pause.children.push(text([0.04, 0.05], [0.96, 0.18], "PAUSED", 22));
     pause.children.push(text([0.06, 0.22], [0.96, 0.31], "W / S      drive", 12, COL_DIM));
     pause.children.push(text([0.06, 0.32], [0.96, 0.41], "A / D      turn", 12, COL_DIM));
-    pause.children.push(text([0.06, 0.42], [0.96, 0.51], "Space      weapon", 12, COL_DIM));
+    pause.children.push(text([0.06, 0.42], [0.96, 0.51], "E          weapon (toggle)", 12, COL_DIM));
     pause.children.push(text([0.06, 0.52], [0.96, 0.61], "R          self-right", 12, COL_DIM));
     pause.children.push(text([0.06, 0.62], [0.96, 0.71], "F3         AI overlay", 12, COL_DIM));
     pause.children.push(button([0.1, 0.76], [0.48, 0.9], "Resume", "hud:resume"));

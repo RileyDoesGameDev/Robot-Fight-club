@@ -52,10 +52,10 @@ then move to step 2 — that stuck point is a finding, not a failure of the sess
 
 ### 2. Guided practice (4 min)
 
-Now tell them: `W`/`S` drive, `A`/`D` turn, `Space` spins the weapon, `R` self-rights,
+Now tell them: `W`/`S` drive, `A`/`D` turn, `E` toggles the weapon, `R` self-rights,
 `Esc` pauses. Send them to the Demo Center against one opponent.
 
-- Do they use `Space` unprompted after being told once?
+- Do they use `E` unprompted after being told once? Do they realise it is a toggle, or do they hold it?
 - Do they ever discover self-righting on their own, or do they sit flipped?
 - Ask: **"what do you think your weapon does?"** — a wrong answer here is a readability bug
 

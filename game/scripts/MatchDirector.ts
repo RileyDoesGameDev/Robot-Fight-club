@@ -51,17 +51,20 @@ const COL_BTN = 0x272b36;
  * The scene director is the right owner. It exists once per gameplay scene, it starts
  * before anything is driveable, and it already owns the rest of scene setup (T-6.2).
  *
- * Bound per action rather than all-or-nothing, which is the bug that shipped the first
- * time: gating the whole map on one action already existing meant any action added
- * later never bound in a session that had applied the old set — exactly how the F3 AI
- * overlay silently went missing after it was added.
+ * The map is APPLIED IN FULL every time, overwriting whatever is bound. Two earlier
+ * versions of this were wrong in the same direction and both hid a rebinding:
+ *
+ *   1. Gating the whole map on one action already existing meant any action added
+ *      later never bound at all — how the F3 AI overlay silently went missing.
+ *   2. Gating each action on itself already existing fixed that but still made a
+ *      binding permanent once set. A deployed build bakes the editor's action table
+ *      into its bundle, so changing a key in `input-map.json` had no effect on the
+ *      thing anyone actually plays — the stale baked binding always won.
+ *
+ * There is no case where an existing binding should beat the file: the file is the
+ * source of truth, and re-applying a dozen bindings on scene load costs nothing.
  */
 function applyInputMap(call, engine) {
-  const existing = call("input.listActions", {});
-  const list = existing && !existing.isError && existing.content ? existing.content : [];
-  const have = new Set((Array.isArray(list) ? list : list.actions || [])
-    .map((a) => (typeof a === "string" ? a : a.action)));
-
   let maps = [];
   const res = call("project.readFile", { path: "/data/bundle.json" });
   if (!res || res.isError || !res.content) return;
@@ -74,15 +77,14 @@ function applyInputMap(call, engine) {
     return;
   }
 
-  let added = 0;
+  let bound = 0;
   for (const map of maps) {
     for (const action of Object.keys(map)) {
-      if (have.has(action)) continue;
       call("input.mapAction", { action, codes: map[action] });
-      added++;
+      bound++;
     }
   }
-  if (added) engine.console.log("[Match] applied " + added + " input bindings");
+  if (bound) engine.console.log("[Match] applied " + bound + " input bindings");
 }
 
 export default function create() {

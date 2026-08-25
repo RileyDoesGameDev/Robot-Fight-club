@@ -9,7 +9,8 @@
  *   partId    the PartDef id, so stats are read from the bundle
  *   autoSpin  true to hold the weapon at speed without input (the AI opponent
  *             uses this until AiDriver lands in T-3.13)
- *   action    input action that commands spin-up, default "weapon.primary"
+ *   action    input action that TOGGLES the weapon; BotAssembler resolves it per
+ *             seat ("weapon.primary" for player 1, "p2.weapon.primary" for player 2)
  *
  * HOW THE MOTOR IS DRIVEN
  *   The assembler authors the revolute joint with a velocity motor at
@@ -78,6 +79,9 @@ function rotate(q, v) {
 }
 
 export default function create() {
+  /** Toggle latch for a human-driven weapon. See the command-source block below. */
+  let weaponOn = false;
+
   let stats = null;
   let dmg = null;
   let jointId = -1;
@@ -216,11 +220,27 @@ export default function create() {
       // UtilityAi, which manages spin deliberately (hold it up for a charge, drop it
       // to save the motor) — so it has to outrank `autoSpin`, which only ever means
       // "always on" and is now reserved for display roles like the select turntable.
+      // A human's weapon is a TOGGLE, not a hold. A spinner takes real seconds to
+      // reach speed, so holding a key for a whole match was tiring and achieved
+      // nothing, and letting go to reposition meant spinning down and paying the
+      // spin-up again. `actionPressed` is the edge; `actionHeld` would flip the
+      // state every frame the key was down.
+      //
+      // The action name comes from params, resolved per seat by BotAssembler. It
+      // used to default to the unprefixed "weapon.primary" for every bot, which is
+      // why both players' weapons fired off one key (BB-013). The default remains
+      // only for a bot assembled without one.
+      const inputAction = params.action || "weapon.primary";
+      if (engine.input.actionPressed(inputAction)) weaponOn = !weaponOn;
+      // A destroyed weapon is not merely off, it is gone: clear the latch so that
+      // re-arming after a repair does not resume a toggle nobody set.
+      if (partState === "destroyed") weaponOn = false;
+
       const commanded = typeof params.spinCommand === "boolean"
         ? params.spinCommand && partState !== "destroyed"
         : params.autoSpin === true
           ? partState !== "destroyed"
-          : engine.input.actionHeld(params.action || "weapon.primary");
+          : weaponOn;
 
       // ── swing weapons (T-4.2, T-4.3) ─────────────────────────────────
       // A distinct cycle rather than a special case of the spin machine: a hammer

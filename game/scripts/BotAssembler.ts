@@ -260,7 +260,19 @@ function assemble(call, engine, blueprintId, role, pose) {
         entity,
         behavior: "WeaponController",
         enabled: true,
-        params: { role, partId: a.partId, autoSpin: role === "workshop" || role === "select" },
+        params: {
+          role, partId: a.partId,
+          autoSpin: role === "workshop" || role === "select",
+          // Which input action commands this weapon. Resolved HERE because the
+          // assembler is the only place that knows which seat a bot belongs to —
+          // the same reason BotDrive gets its playerIndex from here.
+          //
+          // Without it, WeaponController fell back to the unprefixed
+          // "weapon.primary" for every bot, so in a versus match both weapons
+          // fired off player 1's key (BB-013). AI-driven bots ignore this
+          // entirely: `spinCommand` outranks input.
+          action: (role === "player" ? "" : "p2.") + "weapon.primary",
+        },
       });
     }
 

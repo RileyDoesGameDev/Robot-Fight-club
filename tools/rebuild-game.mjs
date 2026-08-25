@@ -27,7 +27,7 @@
  * (engine-fixes.md LIM-009).
  */
 import { spawnSync } from "node:child_process";
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, copyFileSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";
 
@@ -136,13 +136,44 @@ if (!process.argv.includes("--skip-engine")) {
 
 // ---- 6. shim ---------------------------------------------------------------------
 
-step(6, "shim the export");
+step(6, "copy sourced audio");
+{
+  // The container serves this directory, so the mp3s have to live in it. They are not
+  // in the bundle: the engine's export has no notion of an audio asset it cannot play,
+  // and inlining 1.5 MB of mp3 into a JSON bundle would be worse than serving files.
+  const from = join(REPO, "Audio");
+  const to = join(OUT, "audio");
+  if (!existsSync(from)) {
+    console.log("    no Audio/ directory — every clip stays synthesised");
+  } else {
+    mkdirSync(to, { recursive: true });
+    const files = readdirSync(from).filter((f) => /\.(mp3|ogg|wav)$/i.test(f));
+    let bytes = 0;
+    for (const f of files) {
+      copyFileSync(join(from, f), join(to, f));
+      bytes += statSync(join(from, f)).size;
+    }
+    console.log(`    ${files.length} files, ${(bytes / 1024 / 1024).toFixed(2)} MB`);
+    // A clip naming a file that is not here is not fatal — it falls back to synthesis —
+    // but it is always a mistake, so say so rather than letting it pass quietly.
+    const audioJson = JSON.parse(readFileSync(join(REPO, "game/data/audio.json"), "utf8"));
+    const missing = Object.entries(audioJson.clips)
+      .filter(([k, c]) => k[0] !== "$" && c.file && !files.includes(c.file))
+      .map(([k, c]) => `${k} -> ${c.file}`);
+    if (missing.length) {
+      console.log("    WARNING: clips name files not present (they will stay synthesised):");
+      for (const m of missing) console.log("      " + m);
+    }
+  }
+}
+
+step(7, "shim the export");
 if (!existsSync(join(OUT, "player.js"))) die("no export in build/battle-bots", "run the engine block first");
 process.stdout.write(run("node", ["tools/shim-build.js", "build/battle-bots"], "shim-build.js"));
 
 // ---- 7. redeploy -----------------------------------------------------------------
 
-step(7, "restart the container");
+step(8, "restart the container");
 const ps = spawnSync("docker", ["ps", "-a", "--filter", `name=${CONTAINER}`, "--format", "{{.Names}}"],
   { encoding: "utf8", shell: process.platform === "win32" });
 if (!String(ps.stdout).includes(CONTAINER)) {

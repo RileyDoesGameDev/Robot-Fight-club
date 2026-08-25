@@ -181,10 +181,13 @@ async function boot(opts) {
 }
 
 // T-6.16 — every clip is synthesised and registered.
-await check("T-6.16 registers all 9 clips as bb_* with real WAV bytes", async () => {
+await check("T-6.16 registers every clip as bb_* with real WAV bytes", async () => {
   const { h } = await boot({ chassis: CHASSIS });
   const loads = h.of("audio.loadClip");
-  eq(loads.length, 9, "clip count");
+  // Count from the data rather than a literal, so adding a clip does not fail this
+  // check for the wrong reason — the point is that every DECLARED clip registers.
+  const declared = Object.keys(audio.clips).filter((k) => k[0] !== "$").length;
+  eq(loads.length, declared, "clip count");
   for (const l of loads) {
     ok(l.args.name.startsWith("bb_"), `clip ${l.args.name} is namespaced`);
     const b = l.args.source.bytes;
@@ -231,7 +234,9 @@ await check("T-6.17 a hit fires impact + spark at the contact point", async () =
   h.emit("battlebots.weaponHit", { weapon: 300, victim: 301, force: 4000, point: { x: 1, y: 2, z: 3 } });
   const attached = h.of("audio.attachSource").slice(before);
   const clips = attached.map((c) => c.args.clip);
-  ok(clips.includes(CLIP("impact")), "impact fired");
+  // One of the three impact clips, chosen by force and by whether the weapon swings.
+  const IMPACTS = [CLIP("impact"), CLIP("impactHeavy"), CLIP("hammerHit")];
+  ok(clips.some((c) => IMPACTS.includes(c)), `an impact clip fired, got ${clips.join(",")}`);
   ok(clips.includes(CLIP("spark")), "spark fired");
   const moved = h.of("scene.setComponent").filter((c) => c.args.component === "Transform");
   ok(moved.length >= 2, "voices teleported to the contact point");
@@ -239,6 +244,45 @@ await check("T-6.17 a hit fires impact + spark at the contact point", async () =
   ok(p[0] === 1 && p[1] === 2 && p[2] === 3, `voice at contact, got ${p}`);
   ok(attached.every((c) => c.args.spatial === true), "positioned one-shots are spatial");
   ok(attached.every((c) => c.args.loop === false), "one-shots do not loop");
+});
+
+// Three impact clips instead of one pitched clank: which metal hit which is
+// information a player can act on, and it is easy to regress into "always impact".
+await check("T-6.17 the impact clip varies with force and weapon type", async () => {
+  const fired = async (force, swingFirst) => {
+    const { h } = await boot({ chassis: CHASSIS });
+    h.emit("battlebots.matchState", { state: "fighting" });
+    if (swingFirst) h.emit("battlebots.weaponSwing", { entity: 300, role: "player", arc: 1 });
+    const before = h.of("audio.attachSource").length;
+    h.emit("battlebots.weaponHit", { weapon: 300, victim: 301, force, point: { x: 0, y: 0, z: 0 } });
+    return h.of("audio.attachSource").slice(before).map((c) => c.args.clip);
+  };
+  const soft = await fired(1500, false);
+  const hard = await fired(9000, false);
+  const swung = await fired(1500, true);
+  ok(soft.includes(CLIP("impact")), `an ordinary hit uses impact, got ${soft.join(",")}`);
+  ok(hard.includes(CLIP("impactHeavy")), `a hard hit uses impactHeavy, got ${hard.join(",")}`);
+  ok(swung.includes(CLIP("hammerHit")), `a swing weapon uses hammerHit, got ${swung.join(",")}`);
+});
+
+// The event that had no listener at all until AUDIO-GAPS #1.
+await check("T-6.17 a weapon swing that misses still makes a sound", async () => {
+  const { h } = await boot({ chassis: CHASSIS });
+  h.emit("battlebots.matchState", { state: "fighting" });
+  const before = h.of("audio.attachSource").length;
+  h.emit("battlebots.weaponSwing", { entity: 400, role: "player", arc: 2.1 });
+  const clips = h.of("audio.attachSource").slice(before).map((c) => c.args.clip);
+  ok(clips.includes(CLIP("swing")), `swing fired, got ${clips.join(",")}`);
+});
+
+// A part reaching `destroyed` — the audio half of what VfxDirector already shows.
+await check("T-6.17 a destroyed part makes a sound", async () => {
+  const { h } = await boot({ chassis: CHASSIS });
+  h.emit("battlebots.matchState", { state: "fighting" });
+  const before = h.of("audio.attachSource").length;
+  h.emit("battlebots.partState", { entity: 500, role: "player", state: "destroyed", category: "wheel" });
+  const clips = h.of("audio.attachSource").slice(before).map((c) => c.args.clip);
+  ok(clips.includes(CLIP("partBreak")), `partBreak fired, got ${clips.join(",")}`);
 });
 
 // A hit under the force floor is not a sound.

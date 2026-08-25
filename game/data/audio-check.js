@@ -222,7 +222,14 @@ for (const r of rows) {
 }
 
 const totalKb = rows.reduce((a, r) => a + r.kb, 0);
-console.log(`\n  total ${totalKb.toFixed(1)} KB of PCM, synthesised at load — no audio files in the build.`);
+const withFile = names.filter((n) => audio.clips[n].file);
+const noFile = names.filter((n) => !audio.clips[n].file);
+console.log(`\n  total ${totalKb.toFixed(1)} KB of PCM, synthesised at load.`);
+console.log(`  ${withFile.length}/${names.length} clips also have a sourced recording that replaces the synthesised`);
+console.log(`  one once it decodes. Everything measured above is the FALLBACK — a missing or broken`);
+console.log(`  file degrades to a real sound rather than to silence, which is exactly why the synth`);
+console.log(`  spec is still validated for clips that have a file.`);
+if (noFile.length) console.log(`  synthesis only: ${noFile.join(", ")}`);
 
 if (mixProblems.length) {
   console.log("\n  mix problems:");

@@ -810,7 +810,7 @@ The week-1 tuning transfers essentially unchanged from the 90 kg greybox to the 
 |---|---|---|
 | `drive.forward` / `drive.back` | `W` / `S` (also `↑` / `↓`) | |
 | `turn.left` / `turn.right` | `A` / `D` (also `←` / `→`) | |
-| `weapon.primary` | `Space` | spin up / swing |
+| `weapon.primary` | `E` (P1) / numpad `9` (P2) | **toggle** the weapon on or off |
 | `weapon.secondary` | `Left Shift` | reserved |
 | `bot.selfRight` | `R` | 2 s cooldown, only while flipped |
 | `ui.pause` | `Escape` | |

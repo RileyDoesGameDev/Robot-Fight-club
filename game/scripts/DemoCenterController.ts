@@ -38,7 +38,7 @@ const COL_DIM = 0x9aa0ad;
 const TIPS = [
   "W / S — drive forward and back",
   "A / D — turn (tank steer)",
-  "Space — weapon: hold to spin up, or to swing",
+  "E — weapon on/off (toggle). Player 2: numpad 8/4/5/6, 9 for weapon",
   "R — self-right when flipped",
   "Esc — pause    F3 — AI debug overlay",
   "",

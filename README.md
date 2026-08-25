@@ -130,7 +130,7 @@ the editor's MCP tab and confirm `engine_status` reports `engineConnected: true`
 ## Playing it
 
 The game runs in a Docker container at **<http://localhost:4300>**. Open it and play — `W`/`S`
-drive, `A`/`D` turn, `Space` spins the weapon, `R` self-rights, `Esc` pauses.
+drive, `A`/`D` turn, `E` toggles the weapon, `R` self-rights, `Esc` pauses.
 
 ```sh
 docker ps --filter name=battle-bots      # it restarts with Docker
@@ -281,7 +281,15 @@ Honest list. Detail and repro in [docs/BUGS.md](docs/BUGS.md); engine-side cause
 
 ## Controls
 
-`W`/`S` drive · `A`/`D` turn · `Space` spin up the weapon · `R` self-right · `Esc` pause
+**Player 1** — `W`/`S` drive · `A`/`D` turn · `E` weapon on/off · `R` self-right · `Esc` pause
+
+**Player 2** (versus) — numpad `8`/`5` drive · `4`/`6` turn · `9` weapon on/off · `7` self-right
+
+The weapon is a **toggle**, not a hold: press once to bring it up, press again to drop it. A
+spinner takes real seconds to reach speed, so holding a key for a whole match achieved nothing
+and letting go to reposition meant paying the spin-up again.
+
+The numpad bindings are by physical key code, so they work whether or not NumLock is on.
 
 Load `BotSelect` and the rest is in-game: **PRACTICE** spars in `DemoCenter` (pick who you fight,
 no clock), **FIGHT** runs a timed match in `Arena01`. When it ends, **Rematch** replays it and

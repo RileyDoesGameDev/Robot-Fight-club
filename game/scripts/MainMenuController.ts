@@ -157,7 +157,7 @@ export default function create() {
     opts.children.push(text([0.04, 0.04], [0.96, 0.16], "OPTIONS", 16));
     opts.children.push(text([0.06, 0.2], [0.96, 0.31], "Drive        W / S", 12, COL_DIM));
     opts.children.push(text([0.06, 0.32], [0.96, 0.43], "Turn         A / D", 12, COL_DIM));
-    opts.children.push(text([0.06, 0.44], [0.96, 0.55], "Weapon       Space", 12, COL_DIM));
+    opts.children.push(text([0.06, 0.44], [0.96, 0.55], "Weapon       E  (toggle)", 12, COL_DIM));
     opts.children.push(text([0.06, 0.56], [0.96, 0.67], "Self-right   R", 12, COL_DIM));
     opts.children.push(text([0.06, 0.68], [0.96, 0.79], "AI overlay   F3        Pause  Esc", 12, COL_DIM));
     opts.children.push(button([0.34, 0.83], [0.66, 0.95], "Back", "menu:optionsback"));

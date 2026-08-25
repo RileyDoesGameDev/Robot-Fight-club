@@ -19,6 +19,38 @@ Engine defects live in `engine-fixes.md`, not here. This file is the game's own.
 
 ## Major
 
+### BB-013 — both players' weapons fired off one key · **fixed**
+
+Reported from versus play: "both players power their weapons with the space bar."
+
+`BotDrive` takes its action prefix from `params.playerIndex`, so driving and turning were
+correctly split between the two seats. `WeaponController` did not — it fell back to
+`params.action || "weapon.primary"`, and `BotAssembler` never passed an `action`. So every
+weapon in the game, on either seat, read player 1's key.
+
+It only shows up in versus, and only for the weapon, which is why it survived: single-player
+hides it completely because the opponent's weapon is driven by `spinCommand` from the AI and
+never reads input at all.
+
+Fixed by resolving the action in `BotAssembler`, which is the only place that knows which seat
+a bot belongs to — the same reason `playerIndex` is resolved there. Verified in versus: player
+gets `weapon.primary`, opponent gets `p2.weapon.primary`.
+
+### BB-014 — the input map could add a binding but never change one · **fixed**
+
+Found while moving player 2 to the numpad: the new bindings had no effect on the deployed
+build. `applyInputMap` skipped any action that already existed, and a deployed build **bakes
+the editor's action table into its bundle** — so the stale baked binding always won and
+`input-map.json` was decorative for anything already bound.
+
+This is the second version of the same mistake. The first gated the *whole map* on one action
+existing, which is how the F3 AI overlay silently never bound. Gating each action on itself was
+the fix for that and introduced this.
+
+There is no case where an existing binding should beat the file. The map is now applied in full
+on every scene load: 16 bindings, costing nothing.
+
+
 ### BB-012 — a deployed match froze when a weapon's debris was culled · **fixed**
 
 Found while doing T-2.25, by checking an assumption rather than by playing. The runtime's script
