@@ -42,3 +42,4 @@ game/data/last-match.json
 game/data/history.json
 game/data/session.json
 game/data/return-to.json
+build/battle-bots-image.tar

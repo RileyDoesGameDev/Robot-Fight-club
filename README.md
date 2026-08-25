@@ -129,13 +129,35 @@ the editor's MCP tab and confirm `engine_status` reports `engineConnected: true`
 
 ## Playing it
 
-The game runs in a Docker container at **<http://localhost:4300>**. Open it and play — `W`/`S`
-drive, `A`/`D` turn, `E` toggles the weapon, `R` self-rights, `Esc` pauses.
+```sh
+docker compose -f deploy/docker-compose.yml up -d
+```
+
+Then open **<http://localhost:4300>**. `PORT=8080 docker compose ... up -d` to use another port.
+
+## Sending it to someone
+
+The image is **self-contained** — engine, scene bundle, seeded project data and audio all baked
+in, no host mount and no network at runtime. The recipient needs Docker and nothing else.
 
 ```sh
-docker ps --filter name=battle-bots      # it restarts with Docker
-docker start battle-bots                 # if it is stopped
+node tools/package-game.mjs --save      # rebuild-check, build image, write a .tar
 ```
+
+That produces `build/battle-bots-image.tar` (~27 MB). Send it along with
+[deploy/README.md](deploy/README.md), which is written for someone who has never seen this repo
+and covers controls, how to play, and the two behaviours that look like bugs and are not
+(background tabs suspend the game; audio needs one click first). They run:
+
+```sh
+docker load -i battle-bots-image.tar
+docker run --rm -p 4300:8080 battle-bots:latest
+```
+
+`package-game.mjs` **refuses to package a stale or unshimmed build** — it compares the build's
+mtime against every source under `game/` and checks `player.js` carries the shim marker. Passing
+somebody a container that quietly runs last week's game is the failure worth designing against;
+`--stale-ok` overrides it if that is genuinely what you want.
 
 > **Keep the tab in the foreground.** Chrome suspends `requestAnimationFrame` in hidden tabs, so
 > a backgrounded game does not merely slow down, it stops. That is browser behaviour, not a bug.

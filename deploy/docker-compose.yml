@@ -1,0 +1,29 @@
+# Battle Bots — one command to play.
+#
+#   docker compose -f deploy/docker-compose.yml up -d
+#   open http://localhost:4300
+#
+# For someone who was SENT the image rather than the repo, `image:` below is all that
+# matters — see deploy/README.md. `build:` is here so that running this from a repo
+# checkout builds from source instead of expecting an image to already exist.
+
+services:
+  battle-bots:
+    image: battle-bots:latest
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    container_name: battle-bots
+    # Host port is the only thing worth changing. PORT=8080 docker compose up -d
+    ports:
+      - "${PORT:-4300}:8080"
+    restart: unless-stopped
+    # Nothing is written at runtime — the game keeps its state in the browser, not on
+    # disk — so the filesystem can be read-only. nginx still needs somewhere to put
+    # its scratch files, hence the two tmpfs mounts.
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/cache/nginx
+    security_opt:
+      - no-new-privileges:true

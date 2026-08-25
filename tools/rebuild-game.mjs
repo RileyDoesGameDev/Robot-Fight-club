@@ -42,8 +42,24 @@ function die(msg, hint) {
   if (hint) console.error(`      ${hint}`);
   process.exit(1);
 }
+/**
+ * Quote an argument for a shelled-out command.
+ *
+ * `spawnSync` with `shell: true` CONCATENATES argv rather than passing it through, so
+ * anything containing a space is silently split. This repo lives under a path with a
+ * space in it (T-0.5), so that is not hypothetical: `docker save -o <path>` failed
+ * with "open C:\Users\.tmp-KOBI...: Access is denied", which reads like a permissions
+ * problem and is a quoting one.
+ *
+ * shell:true is needed on Windows to find `docker` on PATH, so the quoting has to
+ * happen here rather than being avoided.
+ */
+function q(a) {
+  return process.platform === "win32" && /\s/.test(a) ? `"${a}"` : a;
+}
+
 function run(cmd, args, label) {
-  const r = spawnSync(cmd, args, { cwd: REPO, encoding: "utf8", shell: process.platform === "win32" });
+  const r = spawnSync(cmd, args.map(q), { cwd: REPO, encoding: "utf8", shell: process.platform === "win32" });
   if (r.status !== 0) {
     console.error(r.stdout || "");
     console.error(r.stderr || "");
